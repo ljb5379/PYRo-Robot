@@ -7,6 +7,7 @@
 #include "pyro_supercap_drv.h"
 #include "pyro_referee.h"
 #include "pyro_vt03_rc_drv.h"
+#include "pyro_uart_comm.h"
 
 namespace pyro
 {
@@ -60,6 +61,15 @@ extern "C"
         SUPERCAP_UART.reset(115200, UART_WORDLENGTH_8B, UART_STOPBITS_1,
                             UART_PARITY_NONE);
         supercap_drv_t::get_instance()->start_rx();
+#endif
+
+#ifdef AUTOAIM_UART
+        // 外部自瞄/导航 UART（默认 UART7）：先建流 + 起解析线程，再使能接收
+        pyro::uart_comm_t::instance().init();
+        pyro::uart_comm_t::instance().start();
+        AUTOAIM_UART.reset(115200, UART_WORDLENGTH_8B, UART_STOPBITS_1,
+                           UART_PARITY_NONE); // TODO 用户填实际波特率
+        AUTOAIM_UART.enable_rx_dma();
 #endif
 
         vTaskDelete(nullptr);

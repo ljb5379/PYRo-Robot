@@ -11,6 +11,8 @@
 float test_imutarget;
 float a1=0;
 float a2=0;
+    static constexpr float reduction_ratio_xroll = 15.70320855614973f;
+    static constexpr float reciprocal_reduction_ratio_xroll = 1/15.70320855614973f;
 namespace pyro
 {
 rudder_chassis_t::rudder_chassis_t() : module_base_t("rudder")
@@ -161,7 +163,7 @@ void rudder_chassis_t::_update_feedback(){
     {
         _ctx.data.current_states.modules[i].angle = _ctx.data.current_data.rudder_pos[i];
         _ctx.data.current_states.modules[i].speed = _ctx.data.current_data.wheel_spd[i]
-                                            * dji_m3508_motor_drv_t::reciprocal_reduction_ratio_xroll
+                                            *reciprocal_reduction_ratio_xroll
                                             * WHEEL_SIZE;  
     }
 

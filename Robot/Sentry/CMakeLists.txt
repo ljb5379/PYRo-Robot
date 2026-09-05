@@ -47,6 +47,8 @@ if (BOARD STREQUAL "GIMBAL_BOARD")
             #Communication/Gimbal_board/pyro_autoaim_com.cpp
 
             Communication/pyro_board_comm.cpp
+            Communication/pyro_uart_comm.cpp
+            #Communication/nav/nav.c
 
             pyro_mission_planer.cpp
             pyro_init_thread.cpp
@@ -79,6 +81,8 @@ elseif (BOARD STREQUAL "CHASSIS_BOARD")
 
             # === Communication ===
             Communication/pyro_board_comm.cpp
+            Communication/pyro_uart_comm.cpp
+            #Communication/uart_com/uart_comm.cpp
 
             pyro_mission_planer.cpp
             pyro_init_thread.cpp

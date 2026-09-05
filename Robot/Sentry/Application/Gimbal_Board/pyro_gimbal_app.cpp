@@ -11,6 +11,8 @@
 #include "pyro_can_drv.h"
 #include "pyro_bsp_can.h"
 #include "pyro_board_comm.h"
+#include "pyro_bsp_uart.h"
+//#include "pyro_uart_msg.h"
 
 using namespace pyro;
 
@@ -20,6 +22,9 @@ static TaskHandle_t gimbal_task_handle                        = nullptr;
 static pyro::sentry_gimbal_t *sentry_gimbal_ptr                = nullptr;
 static pyro::sentry_gimbal_cmd_t *gimbal_cmd_ptr               = nullptr;
 static pyro::sentry_gimbal_deps_t *gimbal_deps_ptr             = nullptr;
+
+//static aim2mcu_msg_t aim2mcu_msg;
+
 
 extern "C" {
 
@@ -45,9 +50,22 @@ void deps_init()
     gimbal_deps_ptr->pid_deps.yaw_pos_pid = new pyro::pid_t(6.0f, 0.0f, 0.0f,0,4);
     gimbal_deps_ptr->pid_deps.yaw_spd_pid = new pyro::pid_t(1.0f, 0.0f, 0.0f,0,10);
 
-    gimbal_deps_ptr->pid_deps.pitch_pos_pid = new pyro::pid_t(15.0f, 1.2f, 0.0f,1.0f,9);
-    gimbal_deps_ptr->pid_deps.pitch_spd_pid = new pyro::pid_t(3.2f, 0.45f, 0.003f,2,9);
+    gimbal_deps_ptr->pid_deps.pitch_pos_pid = new pyro::pid_t(15.0f, 1.0f, 0.0f,1.0f,9);
+    gimbal_deps_ptr->pid_deps.pitch_spd_pid = new pyro::pid_t(2.0f, 0.30f, 0.00f,0,8);
 }
+// void gimbal_aim2mcu()
+// {
+    
+
+
+// }
+
+// void aim_rx_init()
+// {
+//     auto &uart1 = pyro::bsp_uart::get_uart1();
+//     uart1.add_rx_event_callback([aim2mcu_msg]{})
+
+// }
 
 void gimbal_dr162cmd()
 {
@@ -192,6 +210,9 @@ void sentry_gimbal_init(void)
     auto &vrc = pyro::rc_drv_t::read();
     pyro::sw_broker::subscribe(&vrc.switches.right, pyro::sw_event_t::DOWN_TO_MID, gimbal_task_handle, EVENT_BIT_SPINNING);
     vTaskDelete(nullptr);
+
+
+    
 }
 
 }
