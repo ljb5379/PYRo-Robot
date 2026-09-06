@@ -7,7 +7,13 @@
 #include "pyro_supercap_drv.h"
 #include "pyro_referee.h"
 #include "pyro_vt03_rc_drv.h"
-#include "pyro_uart_comm.h"
+#include "pyro_nav.h"
+// #if BOARD == GIMBAL_BOARD
+
+// #elif BOARD == CHASSIS_BOARD
+
+
+// #endif
 
 namespace pyro
 {
@@ -63,13 +69,22 @@ extern "C"
         supercap_drv_t::get_instance()->start_rx();
 #endif
 
-#ifdef AUTOAIM_UART
-        // 外部自瞄/导航 UART（默认 UART7）：先建流 + 起解析线程，再使能接收
-        pyro::uart_comm_t::instance().init();
-        pyro::uart_comm_t::instance().start();
-        AUTOAIM_UART.reset(115200, UART_WORDLENGTH_8B, UART_STOPBITS_1,
-                           UART_PARITY_NONE); // TODO 用户填实际波特率
-        AUTOAIM_UART.enable_rx_dma();
+// #ifdef AUTOAIM_UART
+//         // 外部自瞄/导航 UART（默认 UART7）：先建流 + 起解析线程，再使能接收
+//         pyro::uart_comm_t::instance().init();
+//         pyro::uart_comm_t::instance().start();
+//         AUTOAIM_UART.reset(115200, UART_WORDLENGTH_8B, UART_STOPBITS_1,
+//                            UART_PARITY_NONE); // TODO 用户填实际波特率
+//         AUTOAIM_UART.enable_rx_dma();
+// #endif
+#ifdef NAV_UART
+
+        // 外部导航 UART（默认 UART10）：起解析任务 + 使能接收
+        pyro::nav_t::get_instance()->start_rx();
+        pyro::bsp_uart::get_uart10().reset(115200, UART_WORDLENGTH_8B,
+                                            UART_STOPBITS_1, UART_PARITY_NONE); // TODO 用户填实际串口/波特率（与 uart_comm.cpp 的 get_instance 保持一致）
+        pyro::bsp_uart::get_uart10().enable_rx_dma();
+
 #endif
 
         vTaskDelete(nullptr);

@@ -47,8 +47,8 @@ if (BOARD STREQUAL "GIMBAL_BOARD")
             #Communication/Gimbal_board/pyro_autoaim_com.cpp
 
             Communication/pyro_board_comm.cpp
-            Communication/pyro_uart_comm.cpp
-            #Communication/nav/nav.c
+            
+            
 
             pyro_mission_planer.cpp
             pyro_init_thread.cpp
@@ -59,8 +59,8 @@ if (BOARD STREQUAL "GIMBAL_BOARD")
             PUBLIC
             ${CMAKE_CURRENT_SOURCE_DIR}/Booster
             ${CMAKE_CURRENT_SOURCE_DIR}/Gimbal
-            ${CMAKE_CURRENT_SOURCE_DIR}/Communication/Gimbal_board
-            ${CMAKE_CURRENT_SOURCE_DIR}
+            ${CMAKE_CURRENT_SOURCE_DIR}/Communication
+            ${CMAKE_CURRENT_SOURCE_DIR}/Communication/uart_com
     )
     target_compile_definitions(PYRo PUBLIC
             DR16_UART=PYRO_UART5
@@ -81,8 +81,7 @@ elseif (BOARD STREQUAL "CHASSIS_BOARD")
 
             # === Communication ===
             Communication/pyro_board_comm.cpp
-            Communication/pyro_uart_comm.cpp
-            #Communication/uart_com/uart_comm.cpp
+            Communication/uart_com/pyro_nav.cpp
 
             pyro_mission_planer.cpp
             pyro_init_thread.cpp
@@ -99,6 +98,7 @@ elseif (BOARD STREQUAL "CHASSIS_BOARD")
             REFEREE_UART=PYRO_UART1
             DR16_UART=PYRO_UART5
             SUPERCAP_UART=PYRO_UART7
+            NAV_UART PYRO_UART10
             
     )
 endif ()
@@ -109,6 +109,7 @@ target_include_directories(Sentry
         ${CMAKE_CURRENT_SOURCE_DIR}/Booster
         ${CMAKE_CURRENT_SOURCE_DIR}/Chassis
         ${CMAKE_CURRENT_SOURCE_DIR}/Communication
+        ${CMAKE_CURRENT_SOURCE_DIR}/Communication/uart_com
         ${CMAKE_CURRENT_SOURCE_DIR}/Gimbal
         ${CMAKE_CURRENT_SOURCE_DIR}
 )
