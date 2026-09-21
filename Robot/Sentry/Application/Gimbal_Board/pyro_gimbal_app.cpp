@@ -13,6 +13,8 @@
 #include "pyro_board_comm.h"
 #include "pyro_bsp_uart.h"
 
+#include "pyro_aim.h"
+
 
 using namespace pyro;
 
@@ -23,10 +25,15 @@ static pyro::sentry_gimbal_t *sentry_gimbal_ptr                = nullptr;
 static pyro::sentry_gimbal_cmd_t *gimbal_cmd_ptr               = nullptr;
 static pyro::sentry_gimbal_deps_t *gimbal_deps_ptr             = nullptr;
 
-//static aim2mcu_msg_t aim2mcu_msg;
+aim2mcu_data_t aim2mcu_msg;
 
 
 extern "C" {
+// void aim2chassis_msg()
+// {
+//     aim2mcu_msg = aim_t::get_instance()->get_rx_msg();
+
+// }
 
 void deps_init()
 {
@@ -53,12 +60,20 @@ void deps_init()
     gimbal_deps_ptr->pid_deps.pitch_pos_pid = new pyro::pid_t(15.0f, 1.0f, 0.0f,1.0f,9);
     gimbal_deps_ptr->pid_deps.pitch_spd_pid = new pyro::pid_t(2.0f, 0.30f, 0.00f,0,8);
 }
-// void gimbal_aim2mcu()
-// {
+
+
+void gimbal_aim2mcu()
+{   if(aim_t::get_instance()->check_online() == false)
+    {
+        aim2mcu_msg.aim_state = 0;
+        aim2mcu_msg.fire = 0;
+        aim2mcu_msg.is_single_shot = 0;
+        aim2mcu_msg.aim_state = 0;
+        return;
+    }
+    aim2mcu_msg = pyro::aim_t::get_instance()->get_rx_msg();
     
-
-
-// }
+}
 
 // void aim_rx_init()
 // {
@@ -68,7 +83,16 @@ void deps_init()
 // }
 
 void gimbal_dr162cmd()
-{
+{       
+
+    if(pyro::dr16_drv_t::instance().check_online() == false)
+    {
+        gimbal_cmd_ptr->mode              = pyro::cmd_base_t::mode_t::PASSIVE;
+        gimbal_cmd_ptr->delta_pitch = 0;
+        gimbal_cmd_ptr->delta_yaw   = 0;
+        return;
+    }
+
     pyro::read_scope_lock lock(pyro::rc_drv_t::get_lock());
     auto &vrc = pyro::rc_drv_t::read();
 
@@ -82,22 +106,53 @@ void gimbal_dr162cmd()
     gimbal_cmd_ptr->mode              = pyro::cmd_base_t::mode_t::ACTIVE;
     gimbal_cmd_ptr->delta_pitch = -vrc.axes.ry * 0.0005f;
     gimbal_cmd_ptr->delta_yaw   = 0* (-vrc.axes.rx * 0.001f);
+    
+    //____________________自瞄没写_______________________//
+    if(aim2mcu_msg.fire == true)
+    gimbal_cmd_ptr->aim_mode = aim2mcu_msg.aim_state;
+    gimbal_cmd_ptr->target_yaw = aim2mcu_msg.shoot_yaw;
+    gimbal_cmd_ptr->target_pitch = aim2mcu_msg.shoot_pitch;
+    
 }
 
 void gimbal_dr162chassis_cmd(uint32_t notify_value)
 {
-    pyro::read_scope_lock lock(pyro::rc_drv_t::get_lock());
-    auto &vrc = pyro::rc_drv_t::read();
-
+    g2c_msg_t msg{};
+    
     static int8_t vx        = 0;
     static int8_t vy        = 0;
     static int8_t wz        = 0;
     static int8_t delta_yaw = 0;
     static bool active      = false;
-    static bool follow_en   = false;
+    static bool follow_en   = true;
     static bool spinning    = false;
+    static bool nav_en   = false;
 
-    g2c_msg_t msg{};
+
+    if(pyro::dr16_drv_t::instance().check_online() == false)
+    {
+        active              = 0;
+        vx                  = 0;
+        vy                  = 0;
+        wz                  = 0;
+        delta_yaw           = 0;
+        follow_en           = false;
+        spinning            = false;
+        nav_en              = false;
+
+        msg.vx        = 0;
+        msg.vy        = 0;
+        msg.delta_yaw = 0;
+        msg.flags     = 0;
+
+        pyro::board_comm_t::instance().send(msg);
+
+        return;
+
+    }
+
+    pyro::read_scope_lock lock(pyro::rc_drv_t::get_lock());
+    auto &vrc = pyro::rc_drv_t::read();
 
     if (pyro::sw_pos_t::UP == vrc.switches.right.current_pos)
     {
@@ -108,6 +163,7 @@ void gimbal_dr162chassis_cmd(uint32_t notify_value)
         delta_yaw           = 0;
         follow_en           = false;
         spinning            = false;
+        nav_en              = false;
 
         msg.vx        = 0;
         msg.vy        = 0;
@@ -132,26 +188,44 @@ void gimbal_dr162chassis_cmd(uint32_t notify_value)
 
     static uint16_t spinning_count = 0;
 
+    // if(pyro::sw_pos_t::DOWN == vrc.switches.right.current_pos){
+    //     if(spinning_count > 1000)
+    //     {
+    //         spinning = true;
+    //         follow_en = false; //依赖底盘写法  谨慎调整！！！ 目前默认开启跟随
+    //     }
+    //     else {spinning_count++;}
+    // }
+
+    // if(EVENT_BIT_SPINNING & notify_value)
+    // {
+    //     spinning = false;
+    //     spinning_count = 0;
+    //     //follow_en =  !follow_en;
+    //     follow_en = true;
+    //     nav_en = !nav_en;
+    // }
     if(pyro::sw_pos_t::DOWN == vrc.switches.right.current_pos){
-        if(spinning_count > 1000)
-        {
-            spinning = true;
-            follow_en = true; //依赖底盘写法  谨慎调整！！！
-        }
-        else {spinning_count++;}
+        
+            spinning = false;
+            follow_en = true; //依赖底盘写法  谨慎调整！！！ 目前默认开启跟随
+
+            nav_en = true;
+    }
+    if(pyro::sw_pos_t::MID == vrc.switches.right.current_pos){
+
+            spinning = false;
+            follow_en = true; //依赖底盘写法  谨慎调整！！！ 目前默认开启跟随
+            nav_en = false;
+
     }
 
-    if(EVENT_BIT_SPINNING & notify_value)
-    {
-        spinning = false;
-        spinning_count = 0;
-        follow_en =  !follow_en;
-    }
+
 
     msg.vx        = vx;
     msg.vy        = vy;
     msg.delta_yaw = delta_yaw;
-    msg.flags     = static_cast<uint8_t>((active<<0)|(follow_en<<1)|(spinning<<2));
+    msg.flags     = static_cast<uint8_t>((active<<0)|(follow_en<<1)|(spinning<<2)|(nav_en<<3));
 
     pyro::board_comm_t::instance().send(msg);
 }
@@ -186,6 +260,9 @@ void sentry_gimbal_thread(void *argument)
         uint32_t notify_val = 0;
         xTaskNotifyWait(0x00, UINT32_MAX, &notify_val, 0);
 
+        gimbal_aim2mcu();
+
+        //aim2chassis_msg();
         // 如果后续希望由底盘板直接解算 RC，可以取消下面这行的注释
          gimbal_dr162cmd();
          gimbal_dr162chassis_cmd(notify_val);

@@ -1,8 +1,8 @@
 # =========================================================================
 # 1. 显式定义当前编译的板子类型（在这里切换 GIMBAL_BOARD 或 CHASSIS_BOARD）
 # =========================================================================
-set(BOARD "GIMBAL_BOARD")
-#set(BOARD "CHASSIS_BOARD")
+#set(BOARD "GIMBAL_BOARD")
+set(BOARD "CHASSIS_BOARD")
 
 # =========================================================================
 # 2. 声明Hero目标文件库（OBJECT库，仅编译目标文件不链接，保留原工程逻辑）
@@ -47,6 +47,7 @@ if (BOARD STREQUAL "GIMBAL_BOARD")
             #Communication/Gimbal_board/pyro_autoaim_com.cpp
 
             Communication/pyro_board_comm.cpp
+            Communication/uart_com/pyro_aim.cpp
             
             
 
@@ -91,6 +92,8 @@ elseif (BOARD STREQUAL "CHASSIS_BOARD")
     target_include_directories(Sentry
             PUBLIC
             ${CMAKE_CURRENT_SOURCE_DIR}/Chassis
+            ${CMAKE_CURRENT_SOURCE_DIR}/Communication
+            ${CMAKE_CURRENT_SOURCE_DIR}/Communication/uart_com
             ${CMAKE_CURRENT_SOURCE_DIR}
     )
 
@@ -98,7 +101,7 @@ elseif (BOARD STREQUAL "CHASSIS_BOARD")
             REFEREE_UART=PYRO_UART1
             DR16_UART=PYRO_UART5
             SUPERCAP_UART=PYRO_UART7
-            NAV_UART PYRO_UART10
+            NAV_UART=PYRO_UART10
             
     )
 endif ()

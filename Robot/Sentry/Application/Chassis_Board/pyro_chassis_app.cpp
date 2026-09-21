@@ -10,6 +10,10 @@
 #include "pyro_bsp_can.h"
 #include "pyro_can_drv.h"
 #include "pyro_board_comm.h"
+#include "pyro_nav.h"
+#include "uart_msg.h"
+
+#include "pyro_referee.h"
 
 using namespace pyro;
 
@@ -17,7 +21,9 @@ using namespace pyro;
 static pyro::rudder_chassis_t *rudder_chassis_ptr       = nullptr;
 static pyro::rudder_cmd_t *rudder_cmd_ptr               = nullptr;
 static pyro::rudder_deps_t *rudder_deps_ptr             = nullptr;
-
+static pyro::referee_drv_t *referee_drv_ptr             = nullptr;
+static nav2mcu_data_t nav2mcu_msg = {0};
+static pyro::referee_data_t referee_data = {0};
 float test_imu11;
 
 
@@ -29,6 +35,43 @@ static void deps_init();
 static void chassis_rxcmd();
 static void chassis_dr162cmd();
 static void imu2chassis();
+static void nav2chassis_cmd();
+static void get_referee_data();
+
+void get_referee_data()
+{
+    if (false == referee_drv_ptr->is_online())
+    {
+        return;
+    }
+    referee_data = referee_drv_ptr->get_data();
+}
+
+void nav2chassis_msg()
+{
+    if(nav_t::get_instance()->check_online() == false)
+    {
+        rudder_cmd_ptr->nav_en = false;
+        nav2mcu_msg.vx = 0;
+        nav2mcu_msg.vy = 0;
+        nav2mcu_msg.wz = 0;
+        
+
+        return;
+    }
+    nav2mcu_msg = nav_t::get_instance()->get_rx_msg();
+    // if(rudder_cmd_ptr->nav_en){
+    //     rudder_cmd_ptr->vx         = nav2mcu_msg.vx;
+    //     rudder_cmd_ptr->vy         = nav2mcu_msg.vy;
+    //     rudder_cmd_ptr->wz         = nav2mcu_msg.wz;
+    //     rudder_cmd_ptr->delta_yaw  = nav2mcu_msg.yaw;
+    //     rudder_cmd_ptr->follow_yaw = nav2mcu_msg.yaw_align;
+    //     rudder_cmd_ptr->spinning   = nav2mcu_msg.stuck;
+    //     rudder_cmd_ptr->in_aim     = nav2mcu_msg.in_aim;
+    //     rudder_cmd_ptr->scan       = nav2mcu_msg.scan;
+    //     rudder_cmd_ptr->pattern    = nav2mcu_msg.mode;
+    // }
+}
 
 void imu2chassis()
 {
@@ -152,21 +195,64 @@ void chassis_rxcmd()
     g2c_msg_t msg;
     if (pyro::board_comm_t::instance().read(msg))
     {
-        rudder_cmd_ptr->vx =
-            2.0f * static_cast<float>(msg.vx) / 127.0f;
-        rudder_cmd_ptr->vy =
-            2.0f * static_cast<float>(msg.vy) / 127.0f;
-        rudder_cmd_ptr->delta_yaw =
-            -0.004f * static_cast<float>(msg.delta_yaw) / 127.0f;
-
         rudder_cmd_ptr->mode =
             msg.active() ? pyro::cmd_base_t::mode_t::ACTIVE : pyro::cmd_base_t::mode_t::PASSIVE;
-        rudder_cmd_ptr->follow_yaw = msg.follow_en();
-        rudder_cmd_ptr->spinning   = msg.spinning();
 
-        if (rudder_cmd_ptr->spinning == true)
+        if(rudder_cmd_ptr->mode == pyro::cmd_base_t::mode_t::PASSIVE)
         {
+            rudder_cmd_ptr->vx         = 0.0f;
+            rudder_cmd_ptr->vy         = 0.0f;
+            rudder_cmd_ptr->wz         = 0.0f;
+            rudder_cmd_ptr->delta_yaw  = 0.0f;
             rudder_cmd_ptr->follow_yaw = false;
+            rudder_cmd_ptr->spinning   = false;
+            rudder_cmd_ptr->in_aim     = false;
+            rudder_cmd_ptr->nav_en     = false;
+            rudder_cmd_ptr->scan       = false;
+
+        }
+        else{
+            
+            rudder_cmd_ptr->nav_en = msg.nav_en();
+            if (rudder_cmd_ptr->nav_en == true)
+            {
+                // rudder_cmd_ptr->vx         = nav2mcu_msg.vx;
+                // rudder_cmd_ptr->vy         = nav2mcu_msg.vy;
+                // rudder_cmd_ptr->wz         = nav2mcu_msg.wz;
+                // rudder_cmd_ptr->delta_yaw  = nav2mcu_msg.yaw;
+                // rudder_cmd_ptr->follow_yaw = nav2mcu_msg.yaw_align;
+                // rudder_cmd_ptr->spinning   = nav2mcu_msg.stuck;
+                // rudder_cmd_ptr->in_aim     = nav2mcu_msg.in_aim;
+                // rudder_cmd_ptr->scan       = nav2mcu_msg.scan;
+                // rudder_cmd_ptr->pattern    = nav2mcu_msg.mode;
+                rudder_cmd_ptr->vx         = nav2mcu_msg.vx;
+                rudder_cmd_ptr->vy         = nav2mcu_msg.vy;
+                rudder_cmd_ptr->wz         = nav2mcu_msg.wz;
+                rudder_cmd_ptr->delta_yaw  = 0.0f;
+                rudder_cmd_ptr->target_yaw_rad = nav2mcu_msg.yaw;
+                rudder_cmd_ptr->follow_yaw = true;
+                rudder_cmd_ptr->spinning   = false;
+                rudder_cmd_ptr->in_aim     = nav2mcu_msg.in_aim;
+                rudder_cmd_ptr->scan       = nav2mcu_msg.scan;
+                rudder_cmd_ptr->pattern    = nav2mcu_msg.mode;
+            }
+            else{
+                rudder_cmd_ptr->follow_yaw = msg.follow_en();
+                rudder_cmd_ptr->spinning   = msg.spinning();
+
+                if (rudder_cmd_ptr->spinning == true)
+                {
+                rudder_cmd_ptr->follow_yaw = false;
+                }
+
+
+                rudder_cmd_ptr->vx =
+                    2.0f * static_cast<float>(msg.vx) / 127.0f;
+                rudder_cmd_ptr->vy =
+                    2.0f * static_cast<float>(msg.vy) / 127.0f;
+                rudder_cmd_ptr->delta_yaw =
+                    -0.004f * static_cast<float>(msg.delta_yaw) / 127.0f;
+            }
         }
     }
 #if BOARD_COMM_TIMEOUT_G2C_ENABLE
@@ -180,6 +266,9 @@ void chassis_rxcmd()
         rudder_cmd_ptr->mode       = pyro::cmd_base_t::mode_t::PASSIVE;
         rudder_cmd_ptr->follow_yaw = false;
         rudder_cmd_ptr->spinning   = false;
+        rudder_cmd_ptr->in_aim     = false;
+        rudder_cmd_ptr->nav_en     = false;
+        rudder_cmd_ptr->scan       = false;
     }
 #endif
 }
@@ -219,11 +308,13 @@ void chassis_dr162cmd()
 void sentry_chassis_thread(void *argument)
 {
     while (true)
-    {
+    {   nav2chassis_msg();
+        imu2chassis();
         chassis_rxcmd();
         // 如果后续希望由底盘板直接解算 RC，可以取消下面这行的注释
         //chassis_dr162cmd();
-        imu2chassis();
+        
+        
         rudder_chassis_ptr->set_command(*rudder_cmd_ptr);
         vTaskDelay(1);
     }

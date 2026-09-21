@@ -296,11 +296,14 @@ void rudder_chassis_t::_kinematics_solve(){
 
     // last_vx = vx_chassis;
     // last_vy = vy_chassis;
-
+if(_ctx.cmd->nav_en){
+    _ctx.data.imu_data.target_yaw_rad = _ctx.cmd->target_yaw_rad;
+}
+else{
     _ctx.data.imu_data.target_yaw_rad += _ctx.cmd->delta_yaw ;
-    _ctx.data.imu_data.target_yaw_rad = loop_fp32_constrain(_ctx.data.imu_data.target_yaw_rad, -PI, PI);
-
     
+}
+    _ctx.data.imu_data.target_yaw_rad = loop_fp32_constrain(_ctx.data.imu_data.target_yaw_rad, -PI, PI);
     
     // //state转data，正反转在solve中,直接使用state可注释
     // _ctx.target_data.rudder_pos[0] = _ctx.target_states.modules[rudder_kin_t::FL].angle;

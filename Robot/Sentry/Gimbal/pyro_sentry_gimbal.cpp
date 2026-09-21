@@ -2,8 +2,12 @@
 #include "gimbal_config.h"
 #include "pyro_algo_common.h"
 #include <arm_math.h>
+
+
 namespace pyro{
-float low_pass_filter(float input, float *prev_output, float alpha)
+
+
+    float low_pass_filter(float input, float *prev_output, float alpha)
 {
 
     *prev_output = alpha * input + (1.0f - alpha) * (*prev_output);

@@ -106,7 +106,7 @@ int main(void)
 
   /* USER CODE BEGIN 1 */
   /* 在开启任何硬件外设和中断之前，执行分散加载与向量表重定向！*/
-  Relocate_Vector_And_Code_To_RAM();
+    Relocate_Vector_And_Code_To_RAM();
   /* USER CODE END 1 */
 
   /* MCU Configuration--------------------------------------------------------*/

@@ -3,11 +3,14 @@
 
 #include "pyro_core_config.h"
 
-// #define DR16_UART PYRO_UART5
+ #define DR16_UART PYRO_UART5
 
-// #if BOARD == CHASSIS_BOARD
-//     #define NAV_UART PYRO_UART10
-// #endif
+ #if BOARD == CHASSIS_BOARD
+      #define NAV_UART PYRO_UART10
+ #endif
+ #if BOARD == GIMBAL_BOARD
+    #define AUTOAIM_UART PYRO_UART7
+ #endif
 
 #define rad 40
 #endif

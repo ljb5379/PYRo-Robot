@@ -23,17 +23,26 @@ struct rudder_cmd_t : cmd_base_t
     float vx;
     float vy;
     float wz;
+
+    uint8_t  pattern;
+    
     float delta_yaw;
-    bool follow_yaw;
+    
     float target_yaw_rad;
+
+    bool spinning;
+    bool follow_yaw;
+    bool scan;
+    bool in_aim;
+    bool nav_en;
 //————imu信息————————————
     float imu_yaw_rad;     
     float imu_yaw_radps;
-    bool spinning;
+    
 
     rudder_cmd_t()
-        : vx(0), vy(0), wz(0),delta_yaw(0),follow_yaw(false),target_yaw_rad(0),
-        imu_yaw_rad(0), imu_yaw_radps(0),spinning(false)
+        : vx(0), vy(0), wz(0),pattern(0),delta_yaw(0),follow_yaw(false),target_yaw_rad(0),
+        imu_yaw_rad(0), imu_yaw_radps(0),spinning(false),scan(false),in_aim(false),nav_en(false)
     {
     }
 

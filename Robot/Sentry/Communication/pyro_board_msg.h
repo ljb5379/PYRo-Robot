@@ -14,7 +14,7 @@ struct g2c_msg_t
     int8_t vx;         // 前向速度
     int8_t vy;         // 横向速度
     int8_t delta_yaw;  // 航向角增量
-    uint8_t flags;     // bit0 active, bit1 follow_en, bit2 spinning
+    uint8_t flags;     // bit0 active, bit1 follow_en, bit2 spinning, bit3 nav_en
     uint8_t rsv[4];    // 预留
 
     static constexpr uint32_t ID = 0x132;
@@ -23,6 +23,7 @@ struct g2c_msg_t
     bool active() const { return flags & 0x01; }
     bool follow_en() const { return flags & 0x02; }
     bool spinning() const { return flags & 0x04; }
+    bool nav_en() const { return flags & 0x08; }
 };
 
 // 0x133 底盘→云台 数据（4 字节预留，格式待定）

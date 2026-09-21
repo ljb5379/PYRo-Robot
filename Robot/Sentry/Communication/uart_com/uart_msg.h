@@ -56,6 +56,36 @@ struct mcu2nav_data_t
     uint16_t game_time;
 };
 
+//AIM → MCU 
+struct aim2mcu_data_t
+{
+    float shoot_yaw;
+    float shoot_yaw_speed;
+    float shoot_yaw_acceleration;
+    float shoot_pitch;
+    float shoot_pitch_speed;
+    float shoot_pitch_acceleration;
+    uint8_t fire           : 1;
+    uint8_t is_single_shot : 1;
+    uint8_t target_id      : 6;
+    uint8_t aim_state;
+};
+//MCU → AIM
+struct mcu2aim_data_t
+{
+    float curr_yaw;
+    float curr_pitch;
+    float self_v_magnitude;
+    float self_v_angle;
+    float curr_speed;
+    uint8_t shoot_delay;
+    uint8_t state       : 5;
+    uint8_t stop_record : 1;
+    uint8_t autoaim     : 1;
+    uint8_t enemy_color : 1;
+} ;
+
+
 // ============================================================================
 // 整帧结构体（SOF 必须在首字节）
 // ============================================================================
@@ -75,6 +105,23 @@ struct mcu2nav_msg_t
     mcu2nav_data_t data;
     frame_tailer tailer;
 };
+
+// 收：AIM → MCU = [SOF][aim2mcu_data_t][CRC16]
+struct aim2mcu_msg_t
+{
+    frame_header header;
+    aim2mcu_data_t data;
+    frame_tailer tailer;
+};
+
+struct mcu2aim_msg_t
+{
+    frame_header header{};
+    mcu2aim_data_t data{};
+    frame_tailer tailer{};
+    frame_enter enter;
+};
+
 
 #pragma pack(pop)
 
