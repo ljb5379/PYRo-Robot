@@ -18,7 +18,7 @@ struct sentry_gimbal_cmd_t: public cmd_base_t
 {
     float delta_yaw;
     float delta_pitch;
-    bool a_mode;
+    bool auto_mode;
     bool b_mode;
 
     float target_yaw;
@@ -31,7 +31,7 @@ struct sentry_gimbal_cmd_t: public cmd_base_t
     // float imu_yaw;
     // float imu_pitch;
         sentry_gimbal_cmd_t()
-        : delta_yaw(0), delta_pitch(0), a_mode(false), b_mode(false)
+        : delta_yaw(0), delta_pitch(0), auto_mode(false), b_mode(false)
     {
     }
 

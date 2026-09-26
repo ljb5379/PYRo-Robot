@@ -55,14 +55,14 @@ void deps_init()
     gimbal_deps_ptr->yaw_min_rad       = -0.70f;
 
     gimbal_deps_ptr->pid_deps.yaw_pos_pid = new pyro::pid_t(6.0f, 0.0f, 0.0f,0,4);
-    gimbal_deps_ptr->pid_deps.yaw_spd_pid = new pyro::pid_t(1.0f, 0.0f, 0.0f,0,10);
+    gimbal_deps_ptr->pid_deps.yaw_spd_pid = new pyro::pid_t(1.0f, 0.0f, 0.0f,0,10.0f);
 
-    gimbal_deps_ptr->pid_deps.pitch_pos_pid = new pyro::pid_t(15.0f, 1.0f, 0.0f,1.0f,9);
-    gimbal_deps_ptr->pid_deps.pitch_spd_pid = new pyro::pid_t(2.0f, 0.30f, 0.00f,0,8);
+    gimbal_deps_ptr->pid_deps.pitch_pos_pid = new pyro::pid_t(22.0f, 0.1f, 0.0f,1.0f,10);
+    gimbal_deps_ptr->pid_deps.pitch_spd_pid = new pyro::pid_t(3.6f, 0.2f, 0.00f,3.0f,12);
 }
 
 
-void gimbal_aim2mcu()
+void gimbal_aim2mcu()//可以不用 直接用gimbal_dr16andaim2cmd()
 {   if(aim_t::get_instance()->check_online() == false)
     {
         aim2mcu_msg.aim_state = 0;
@@ -82,7 +82,8 @@ void gimbal_aim2mcu()
 
 // }
 
-void gimbal_dr162cmd()
+//   云台接收
+void gimbal_dr162cmd()                                      //_______纯手动， 无自瞄
 {       
 
     if(pyro::dr16_drv_t::instance().check_online() == false)
@@ -90,6 +91,7 @@ void gimbal_dr162cmd()
         gimbal_cmd_ptr->mode              = pyro::cmd_base_t::mode_t::PASSIVE;
         gimbal_cmd_ptr->delta_pitch = 0;
         gimbal_cmd_ptr->delta_yaw   = 0;
+        gimbal_cmd_ptr->auto_mode = false;
         return;
     }
 
@@ -101,21 +103,65 @@ void gimbal_dr162cmd()
         gimbal_cmd_ptr->mode              = pyro::cmd_base_t::mode_t::PASSIVE;
         gimbal_cmd_ptr->delta_pitch = 0;
         gimbal_cmd_ptr->delta_yaw   = 0;
+        gimbal_cmd_ptr->auto_mode = false;
         return;
     }
     gimbal_cmd_ptr->mode              = pyro::cmd_base_t::mode_t::ACTIVE;
     gimbal_cmd_ptr->delta_pitch = -vrc.axes.ry * 0.0005f;
-    gimbal_cmd_ptr->delta_yaw   = 0* (-vrc.axes.rx * 0.001f);
+    gimbal_cmd_ptr->delta_yaw   =1* (-vrc.axes.rx * 0.008f);
+    gimbal_cmd_ptr->auto_mode = false;
+
     
-    //____________________自瞄没写_______________________//
-    if(aim2mcu_msg.fire == true)
+}
+void gimbal_dr16andaim2cmd()                                //  自瞄 + 遥控开关
+{
+    if(aim_t::get_instance()->check_online() == false)
+    {
+        gimbal_cmd_ptr->aim_mode = 0;
+        gimbal_cmd_ptr->target_yaw = 0;
+        gimbal_cmd_ptr->target_pitch = 0;
+        gimbal_cmd_ptr->auto_mode = false;
+        return;
+    }
+
+    aim2mcu_msg = aim_t::get_instance()->get_rx_msg();
+    
+
+//_______________dr16控制总开关
+    if(pyro::dr16_drv_t::instance().check_online() == false)
+    {
+        gimbal_cmd_ptr->mode              = pyro::cmd_base_t::mode_t::PASSIVE;
+        gimbal_cmd_ptr->auto_mode = false;
+        return;
+    }
+
+    pyro::read_scope_lock lock(pyro::rc_drv_t::get_lock());
+    auto &vrc = pyro::rc_drv_t::read();
+    if (pyro::sw_pos_t::UP == vrc.switches.right.current_pos)
+    {
+        gimbal_cmd_ptr->mode              = pyro::cmd_base_t::mode_t::PASSIVE;
+        gimbal_cmd_ptr->auto_mode = false;
+        return;
+    }
+    gimbal_cmd_ptr->mode              = pyro::cmd_base_t::mode_t::ACTIVE;
+
+    gimbal_cmd_ptr->auto_mode = true;
+
+//____________________自瞄自主控制_______________________//
+    bool aim_open = false;
+    if(aim_open){
     gimbal_cmd_ptr->aim_mode = aim2mcu_msg.aim_state;
     gimbal_cmd_ptr->target_yaw = aim2mcu_msg.shoot_yaw;
     gimbal_cmd_ptr->target_pitch = aim2mcu_msg.shoot_pitch;
-    
+    gimbal_cmd_ptr->auto_mode = true;
+    }
+
 }
 
-void gimbal_dr162chassis_cmd(uint32_t notify_value)
+
+//  云台转发
+//暂时不需要管自瞄有没有开，自瞄没跟底盘通信
+void gimbal_dr16andnav2chassis_cmd(uint32_t notify_value)   //   遥控 + 导航
 {
     g2c_msg_t msg{};
     
@@ -230,6 +276,106 @@ void gimbal_dr162chassis_cmd(uint32_t notify_value)
     pyro::board_comm_t::instance().send(msg);
 }
 
+void gimbal_dr162chassis_cmd(uint32_t notify_value)         // 手动// 右下小陀螺
+{
+    g2c_msg_t msg{};
+    
+    static int8_t vx        = 0;
+    static int8_t vy        = 0;
+    static int8_t wz        = 0;
+    static int8_t delta_yaw = 0;
+    static bool active      = false;
+    static bool follow_en   = true;
+    static bool spinning    = false;
+    static bool nav_en   = false;
+
+
+    if(pyro::dr16_drv_t::instance().check_online() == false)
+    {
+        active              = 0;
+        vx                  = 0;
+        vy                  = 0;
+        wz                  = 0;
+        delta_yaw           = 0;
+        follow_en           = false;
+        spinning            = false;
+        nav_en              = false;
+
+        msg.vx        = 0;
+        msg.vy        = 0;
+        msg.delta_yaw = 0;
+        msg.flags     = 0;
+
+        pyro::board_comm_t::instance().send(msg);
+
+        return;
+
+    }
+
+    pyro::read_scope_lock lock(pyro::rc_drv_t::get_lock());
+    auto &vrc = pyro::rc_drv_t::read();
+
+    if (pyro::sw_pos_t::UP == vrc.switches.right.current_pos)
+    {
+        active              = 0;
+        vx                  = 0;
+        vy                  = 0;
+        wz                  = 0;
+        delta_yaw           = 0;
+        follow_en           = false;
+        spinning            = false;
+        nav_en              = false;
+
+        msg.vx        = 0;
+        msg.vy        = 0;
+        msg.delta_yaw = 0;
+        msg.flags     = 0;
+
+        pyro::board_comm_t::instance().send(msg);
+
+        return;
+    }
+
+    active              = 1;
+    vx     = static_cast<int8_t>(-(vrc.axes.ly) * 127);
+    vy     = static_cast<int8_t>(vrc.axes.lx * 127);
+    wz     = 0;
+    delta_yaw = static_cast<int8_t>(vrc.axes.rx * 127);
+
+    if(abs(vx) < 5)vx = 0;
+    if(abs(vy) < 5)vy = 0;
+    if(abs(wz) < 5)wz = 0;
+    if(abs(delta_yaw) < 5)delta_yaw = 0;
+
+    static uint16_t spinning_count = 0;
+
+    if(pyro::sw_pos_t::DOWN == vrc.switches.right.current_pos){
+        if(spinning_count > 1000)
+        {
+            spinning = true;
+            follow_en = false; //依赖底盘写法  谨慎调整！！！ 目前默认开启跟随
+        }
+        else {spinning_count++;}
+    }
+
+    if(EVENT_BIT_SPINNING & notify_value)
+    {
+        spinning = false;
+        spinning_count = 0;
+        follow_en =  !follow_en;
+   
+    }
+
+
+
+    msg.vx        = vx;
+    msg.vy        = vy;
+    msg.delta_yaw = delta_yaw;
+    msg.flags     = static_cast<uint8_t>((active<<0)|(follow_en<<1)|(spinning<<2)|(nav_en<<3));
+
+    pyro::board_comm_t::instance().send(msg);
+}
+
 static void chassis2gimbal_rx()
 {
     c2g_msg_t msg;
@@ -253,6 +399,16 @@ static void chassis2gimbal_rx()
 #endif
 }
 
+void gimbal_mcu2aim_data(){
+    mcu2aim_msg_t mcu2aim_msg;
+    mcu2aim_msg.data.autoaim = false;
+    mcu2aim_msg.data.curr_pitch = sentry_gimbal_ptr->get_ctx().data.current_data.pitch_pos;
+    mcu2aim_msg.data.curr_yaw = sentry_gimbal_ptr->get_ctx().data.current_data.yaw_pos;
+    
+
+
+
+}
 void sentry_gimbal_thread(void *argument)
 {
     while (true)
@@ -263,9 +419,16 @@ void sentry_gimbal_thread(void *argument)
         gimbal_aim2mcu();
 
         //aim2chassis_msg();
-        // 如果后续希望由底盘板直接解算 RC，可以取消下面这行的注释
+
+        
+        // 云台接收指令 手动在代码中开关
          gimbal_dr162cmd();
-         gimbal_dr162chassis_cmd(notify_val);
+         //gimbal_dr16andaim2cmd(); 
+
+         //云台转发指令
+        // gimbal_dr162chassis_cmd(notify_val);
+         //gimbal_dr16andnav2chassis_cmd(uint32_t notify_value);
+
          chassis2gimbal_rx();
 
         sentry_gimbal_ptr->set_command(*gimbal_cmd_ptr);

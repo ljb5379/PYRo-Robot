@@ -7,6 +7,7 @@
 #include "pyro_power_control.h"
 #include "pyro_board_comm.h"
 
+#include "pyro_referee.h"
 
 float test_imutarget;
 float a1=0;
@@ -236,6 +237,17 @@ void rudder_chassis_t::_kinematics_solve(){
     //覆盖————可能有bug
     else if(_ctx.cmd->spinning == true)
     { 
+        //根据裁判系统数据 是否受伤，导航是否移动，底盘功率是否充足改变小陀螺转速
+
+        // referee_data_t referee_data = referee_drv_t::get_instance().get_data();
+        // if(referee_data.hurt.armor_id == 0)
+        // {
+        //     final_wz = 0.0f;
+        // }
+        // else
+        // {
+        //     final_wz = -0.5f;
+        // }
         final_wz = 2.5f;
     }
     else

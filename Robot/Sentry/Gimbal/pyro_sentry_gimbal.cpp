@@ -3,8 +3,23 @@
 #include "pyro_algo_common.h"
 #include <arm_math.h>
 
+#include "pyro_jcom.h"
+#include "pyro_bsp_uart.h"
+
+
+
+
+#define JCOM_DEBUG_PORT PYRO_UART1
+float target_pitch1;
+float target_pitch2;
+float current_pitch1;
+
+float pitchspdtarget;
+float pitchspdcurrent;
 
 namespace pyro{
+
+    jcom_drv_t jcom_drv(15,&JCOM_DEBUG_PORT);
 
 
     float low_pass_filter(float input, float *prev_output, float alpha)
@@ -104,15 +119,27 @@ namespace pyro{
 
 void sentry_gimbal_t::_solve(){
 
+    //先对模式进行判断 若自瞄模式则为给定数值（暂定）， 若手动控制则为增量
+
+    if(_ctx.cmd->auto_mode == true)
+    {
+        _ctx.data.target_data.pitch_pos = _ctx.cmd->target_pitch;
+        _ctx.data.target_data.yaw_pos = _ctx.cmd->target_yaw;
+
+    }
+    else{
     if(_ctx.cmd->delta_pitch<0.00005f && _ctx.cmd->delta_pitch>-0.00005f)
         {_ctx.cmd->delta_pitch=0.0f;}
     if(_ctx.cmd->delta_yaw<0.00005f && _ctx.cmd->delta_yaw>-0.00005f)
         {_ctx.cmd->delta_yaw=0.0f;}
 
 
-
     _ctx.data.target_data.pitch_pos  += _ctx.cmd->delta_pitch;
     _ctx.data.target_data.yaw_pos    += _ctx.cmd->delta_yaw;
+    }
+
+
+//统一进行限位
     if(_ctx.data.target_data.pitch_pos>_ctx.data.pitch_max_rad)
         {_ctx.data.target_data.pitch_pos=_ctx.data.pitch_max_rad;}
     if(_ctx.data.target_data.pitch_pos<_ctx.data.pitch_min_rad)
@@ -123,32 +150,57 @@ void sentry_gimbal_t::_solve(){
     if( _ctx.data.target_data.yaw_pos<_ctx.data.yaw_min_rad)
         { _ctx.data.target_data.yaw_pos=_ctx.data.yaw_min_rad;}
 
-
+//jcom_drv.add_data()
 
 }
 
 void sentry_gimbal_t::_gimbal_control(){
+    
+
     float pitch_error=loop_fp32_constrain
                     (_ctx.data.target_data.pitch_pos 
                 -   _ctx.data.current_data.pitch_pos,
                     -PI,PI);
-    float pitch_pid_pos_out=_ctx.pid.pitch_pos_pid->calculate(pitch_error,0);
 
+    float pitch_pid_pos_out =_ctx.pid.pitch_pos_pid->calculate(pitch_error,0);
+
+    
+
+//low_pass_filter(pitch_pid_pos_out, &_ctx.data.target_data.pitch_spd, 0.1f);
+
+
+    static float flitter_gravaty_error_angle = -0.40f - _ctx.data.current_data.pitch_pos;
     float gravaty_error_angle = -0.40f - _ctx.data.current_data.pitch_pos;
 
-    _ctx.data.out_data.pitch_torque=_ctx.pid.pitch_spd_pid
-                        ->calculate(pitch_pid_pos_out,
-                                    _ctx.data.current_data.pitch_spd)
-                        -0.6 * cos(gravaty_error_angle); 
+    low_pass_filter(gravaty_error_angle, &flitter_gravaty_error_angle, 0.4f);
 
-                        
+    // _ctx.data.out_data.pitch_torque=  _ctx.pid.pitch_spd_pid
+    //                     ->calculate(pitch_pid_pos_out*0 + _ctx.cmd->delta_pitch*1000,
+    //                                 _ctx.data.current_data.pitch_spd)
+    //                     -0.6 * cos(flitter_gravaty_error_angle); 
+low_pass_filter(   _ctx.pid.pitch_spd_pid
+                         ->calculate(pitch_pid_pos_out ,
+                                     _ctx.data.current_data.pitch_spd)
+                         -0.64 * cos(flitter_gravaty_error_angle),&_ctx.data.out_data.pitch_torque,0.1f );
+
+
+target_pitch1 = _ctx.data.target_data.pitch_pos;
+target_pitch2 =-0.4f - flitter_gravaty_error_angle;
+current_pitch1 = _ctx.data.current_data.pitch_pos;
+                    
+pitchspdtarget =  pitch_pid_pos_out;
+pitchspdcurrent = _ctx.data.current_data.pitch_spd;
+
     float yaw_error=loop_fp32_constrain
                     (_ctx.data.target_data.yaw_pos 
                 -   _ctx.data.current_data.yaw_pos,
                     -PI,PI);
 
                     
-    float yaw_pid_pos_out=_ctx.pid.yaw_pos_pid->calculate(yaw_error,0);
+
+    //float yaw_pid_pos_out=_ctx.pid.yaw_pos_pid->calculate(yaw_error,0);
+    float yaw_pid_pos_out=_ctx.pid.yaw_pos_pid->calculate( _ctx.cmd->delta_yaw*85 , _ctx.data.current_data.yaw_pos);
+    
 
     _ctx.data.out_data.yaw_torque=_ctx.pid.yaw_spd_pid
                         ->calculate(yaw_pid_pos_out,
@@ -157,7 +209,7 @@ void sentry_gimbal_t::_gimbal_control(){
 }
 
 void sentry_gimbal_t::_send_motor_command() const{
-    _ctx.motor.motor_pitch->send_torque(_ctx.data.out_data.pitch_torque);
+    _ctx.motor.motor_pitch->send_torque(_ctx.data.out_data.pitch_torque*0);
     _ctx.motor.motor_yaw->send_torque(_ctx.data.out_data.yaw_torque);
 
 }

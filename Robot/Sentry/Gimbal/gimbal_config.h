@@ -12,5 +12,6 @@
 #define PITCH_OFFSET_RAD 0.0f;
 #define ROLL_OFFSET_RAD 0.0f;
 
+#define JCOM_DEBUG_PORT PYRO_UART1
 
 #endif

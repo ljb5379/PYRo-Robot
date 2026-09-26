@@ -168,7 +168,7 @@ void deps_init()
 
 
     rudder_deps_ptr->pid_deps.follow_yaw_pid =
-        new pid_t(7.2f     , 0.0f, 0.1, 0, 10.0f);
+        new pid_t(7.2f     , 0.0f, 0.1, 0, 5.0f);
 
 
     rudder_deps_ptr->pid_deps.rudder_pos_pid[0] =
@@ -189,8 +189,10 @@ void deps_init()
     rudder_deps_ptr->pid_deps.rudder_spd_pid[3] =
         new pid_t(0.13f, 0.0f, 0.00f, 0.0f, 3.0f);
 }
+//接收cmd
+//1.只收云台消息， 不管navenable
 
-void chassis_rxcmd()
+void chassis_rxcmd()//后续考虑要不要根据调试分成不同模式，比如把imu包含进来，按是否接收nav消息分成两个函数，把他根据调试模式分割消息来源。（感觉不用，暂不考虑，目前情况划分由云台控制）
 {
     g2c_msg_t msg;
     if (pyro::board_comm_t::instance().read(msg))

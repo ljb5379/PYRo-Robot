@@ -1,8 +1,10 @@
 {
-  "cfg_path": null,
+  "cfg_path": "C:\\Users\\ljb\\AppData\\Roaming\\EmbeddedTool\\user_configs\\stm32g4_daplink .cfg",
   "flash_mode": "Run",
   "cmake_options": "-DROBOT_ID=1",
   "backend_type": "PyOCD",
   "target_type": "stm32h723xx",
+  "svd_path": "",
+  "build_type": "Debug",
   "breakpoints": []
 }
