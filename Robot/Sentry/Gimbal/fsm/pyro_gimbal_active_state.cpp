@@ -23,7 +23,11 @@ void sentry_gimbal_t::state_active_t::execute(owner *owner)
     
     //owner->_communicate_gimbal();
     owner->_solve();
+#if GIMBAL_AI_IMU_BACKUP
+    owner->_AI_gimbal_control();
+#else
     owner->_gimbal_control();
+#endif
     owner->_send_motor_command();
     
 

@@ -11,6 +11,8 @@
 #include "pyro_bsp_can.h"
 #include "pyro_can_drv.h"
 
+#include "pyro_aim.h"
+#include "uart_msg.h"
 using namespace pyro;
 
 // 定义任务通知的位掩码 (Event Bits)
@@ -23,6 +25,7 @@ static pyro::sentry_booster_t *sentry_booster_ptr                = nullptr;
 static pyro::sentry_booster_cmd_t *booster_cmd_ptr               = nullptr;
 static pyro::sentry_booster_deps_t *booster_deps_ptr             = nullptr;
 
+static pyro::aim2mcu_data_t aim2booster_msg;
 
 
 
@@ -125,6 +128,54 @@ void booster_dr162cmd(uint32_t notify_value)
     }
 
 }
+void booster_dr16andaim2cmd(){
+    
+    
+    if(aim_t::get_instance()->check_online() == false)
+    {
+        booster_cmd_ptr->fric_on = false;
+        booster_cmd_ptr->multi_shoot = false;
+        booster_cmd_ptr->mode = pyro::cmd_base_t::mode_t::PASSIVE;
+
+        return;
+    }
+
+    aim2booster_msg = aim_t::get_instance()->get_rx_msg();
+    
+
+//_______________dr16控制总开关
+    if(pyro::dr16_drv_t::instance().check_online() == false)
+    {
+        booster_cmd_ptr->mode              = pyro::cmd_base_t::mode_t::PASSIVE;
+        booster_cmd_ptr->fric_on           = false;
+        return;
+    }
+
+    pyro::read_scope_lock lock(pyro::rc_drv_t::get_lock());
+    auto &vrc = pyro::rc_drv_t::read();
+    if (pyro::sw_pos_t::UP == vrc.switches.right.current_pos)
+    {
+        booster_cmd_ptr->mode              = pyro::cmd_base_t::mode_t::PASSIVE;
+        booster_cmd_ptr->fric_on = false;
+        return;
+    }
+    booster_cmd_ptr->mode              = pyro::cmd_base_t::mode_t::ACTIVE;
+
+    
+//____________________自瞄自主控制_______________________//
+    bool aim_open = false;
+    if(vrc.switches.right.current_pos == pyro::sw_pos_t::DOWN){aim_open = true;}
+    if(aim_open){
+    booster_cmd_ptr->fric_on = aim2booster_msg.aim_state;
+    booster_cmd_ptr->fire_count = aim2booster_msg.fire;
+    booster_cmd_ptr->multi_shoot = !aim2booster_msg.is_single_shot;
+    
+    }
+
+}
+
+
+
     void sentry_booster_thread(void *argument)
     {
         while (true)
@@ -137,6 +188,7 @@ void booster_dr162cmd(uint32_t notify_value)
             // 如果后续希望由底盘板直接解算 RC，可以取消下面这行的注释
              booster_dr162cmd(notify_val);
             // booster_dr162chassis_cmd();
+            //booster_dr16andaim2cmd();
 
             
             sentry_booster_ptr->set_command(*booster_cmd_ptr);

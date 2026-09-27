@@ -165,6 +165,7 @@ class sentry_gimbal_t final
    
 
     void _gimbal_control();
+    void _AI_gimbal_control();   // 备用：IMU 世界系 yaw/pitch 反馈 + 机械限幅
     void _send_motor_command() const;
     //void _communicate_gimbal() const;
     
