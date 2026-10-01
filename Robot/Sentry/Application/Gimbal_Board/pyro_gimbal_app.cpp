@@ -28,6 +28,7 @@ static pyro::sentry_gimbal_deps_t *gimbal_deps_ptr             = nullptr;
 aim2mcu_data_t aim2gimbal_msg;
 
 
+
 extern "C" {
 // void aim2chassis_msg()
 // {
@@ -378,28 +379,7 @@ void gimbal_dr162chassis_cmd(uint32_t notify_value)         // 手动// 右下�
     pyro::board_comm_t::instance().send(msg);
 }
 
-static void chassis2gimbal_rx()
-{
-    c2g_msg_t msg;
-    if (pyro::board_comm_t::instance().read(msg))
-    {
-        // 4字节预留数据，格式待定
-        gimbal_cmd_ptr->chassis_data[0] = msg.data[0];
-        gimbal_cmd_ptr->chassis_data[1] = msg.data[1];
-        gimbal_cmd_ptr->chassis_data[2] = msg.data[2];
-        gimbal_cmd_ptr->chassis_data[3] = msg.data[3];
-    }
-#if BOARD_COMM_TIMEOUT_C2G_ENABLE
-    else if (pyro::board_comm_t::instance().is_stale<c2g_msg_t>(BOARD_COMM_TIMEOUT_C2G_MS))
-    {
-        // 底盘失联：数据清零
-        gimbal_cmd_ptr->chassis_data[0] = 0;
-        gimbal_cmd_ptr->chassis_data[1] = 0;
-        gimbal_cmd_ptr->chassis_data[2] = 0;
-        gimbal_cmd_ptr->chassis_data[3] = 0;
-    }
-#endif
-}
+
 
 void gimbal_mcu2aim_data(){
     mcu2aim_data_t mcu2aim_msg;
@@ -446,7 +426,7 @@ void sentry_gimbal_thread(void *argument)
         //gimbal_dr162chassis_cmd(notify_val);
         gimbal_dr16andnav2chassis_cmd(notify_val);
 
-         chassis2gimbal_rx();
+        
 
         sentry_gimbal_ptr->set_command(*gimbal_cmd_ptr);
         vTaskDelay(1);

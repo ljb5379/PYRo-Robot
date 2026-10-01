@@ -293,11 +293,11 @@ void sentry_gimbal_t::_AI_gimbal_control()
 
     // 底盘（大 yaw / 坡度）世界姿态 = 炮管世界姿态 − 小云台电机角
     // 注意：符号需按电机/IMU 安装方向实测标定，反号会导致斜坡上反向
-    const float chassis_yaw   = imu_world_yaw   - motor_yaw;
-    const float chassis_pitch = imu_world_pitch - motor_pitch;
+    const float gimbal_yaw   = imu_world_yaw   - motor_yaw;
+    const float gimbal_pitch = imu_world_pitch - motor_pitch;
 
     // --- 俯仰：期望电机角 = 世界目标 − 底盘坡度，夹机械限幅 ---
-    float desired_motor_pitch = target_world_pitch - chassis_pitch;
+    float desired_motor_pitch = target_world_pitch - gimbal_pitch;
     desired_motor_pitch = loop_fp32_constrain(desired_motor_pitch,
                                               _ctx.data.pitch_min_rad,
                                               _ctx.data.pitch_max_rad);
@@ -315,7 +315,7 @@ void sentry_gimbal_t::_AI_gimbal_control()
         &_ctx.data.out_data.pitch_torque, 0.1f);
 
     // --- 偏航：期望电机角 = 世界目标 − 底盘朝向，夹小 yaw 限幅（大 yaw 360° 由底盘负责）---
-    float residual_yaw = loop_fp32_constrain(target_world_yaw - chassis_yaw, -PI, PI);
+    float residual_yaw = loop_fp32_constrain(target_world_yaw - gimbal_yaw, -PI, PI);
     float desired_motor_yaw = loop_fp32_constrain(residual_yaw,
                                                   _ctx.data.yaw_min_rad,
                                                   _ctx.data.yaw_max_rad);

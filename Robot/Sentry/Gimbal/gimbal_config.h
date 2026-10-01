@@ -9,7 +9,7 @@
 
 #define GIMBAL_YAW_OFFSET_RAD 3.07179666f;
 
-#define GIMBAL_AI_IMU_BACKUP 0   // 1 = 启用备用 IMU(世界系) 控制
+#define GIMBAL_AI_IMU_BACKUP 1   // 1 = 启用备用 IMU(世界系) 控制
 
 #define PITCH_OFFSET_RAD 0.0f;
 #define ROLL_OFFSET_RAD 0.0f;

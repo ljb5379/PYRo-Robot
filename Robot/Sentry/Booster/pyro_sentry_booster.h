@@ -25,6 +25,10 @@ struct sentry_booster_cmd_t: public cmd_base_t
 
     float real_hit_speed;
     bool multi_shoot;
+
+    float shoot_speed;
+    uint8_t data1;
+    uint8_t data2;
     
     // float imu_yaw;
     // float imu_pitch;

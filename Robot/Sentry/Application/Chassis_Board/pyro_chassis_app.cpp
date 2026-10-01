@@ -37,7 +37,15 @@ static void chassis_dr162cmd();
 static void imu2chassis();
 static void nav2chassis_cmd();
 static void get_referee_data();
+static void chassis2gimbal_tx();
 
+void chassis2gimbal_tx(){
+    c2g_msg_t msg;
+    msg.shoot_speed = referee_data.shoot.initial_speed;
+    msg.data2 = referee_data.shoot.shooter_number;
+    msg.data3 = referee_data.shoot.launching_frequency;
+    board_comm_t::instance().send(msg);
+}
 void get_referee_data()
 {
     if (false == referee_drv_ptr->is_online())
@@ -45,6 +53,8 @@ void get_referee_data()
         return;
     }
     referee_data = referee_drv_ptr->get_data();
+
+
 }
 
 void nav2chassis_msg()
@@ -316,6 +326,8 @@ void sentry_chassis_thread(void *argument)
         // 如果后续希望由底盘板直接解算 RC，可以取消下面这行的注释
         //chassis_dr162cmd();
         
+        get_referee_data();
+        chassis2gimbal_tx();
         
         rudder_chassis_ptr->set_command(*rudder_cmd_ptr);
         vTaskDelay(1);

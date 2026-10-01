@@ -13,6 +13,7 @@
 
 #include "pyro_aim.h"
 #include "uart_msg.h"
+#include "pyro_board_comm.h"
 using namespace pyro;
 
 // 定义任务通知的位掩码 (Event Bits)
@@ -32,8 +33,28 @@ static pyro::aim2mcu_data_t aim2booster_msg;
 extern "C" {
 static void deps_init();
 static void booster_dr162cmd(uint32_t notify_value);
+static void chassis2gimbal_rx();
 
-
+static void chassis2gimbal_rx()
+{
+    c2g_msg_t msg;
+    if (pyro::board_comm_t::instance().read(msg))
+    {
+        // 4字节预留数据，格式待定
+        booster_cmd_ptr->shoot_speed = msg.shoot_speed;
+        booster_cmd_ptr->data1 = msg.data2;
+        booster_cmd_ptr->data2 = msg.data3;
+    }
+#if BOARD_COMM_TIMEOUT_C2G_ENABLE
+    else if (pyro::board_comm_t::instance().is_stale<c2g_msg_t>(BOARD_COMM_TIMEOUT_C2G_MS))
+    {
+        // 底盘失联：数据清零
+        booster_cmd_ptr->shoot_speed = 0;
+        booster_cmd_ptr->data1 = 0;
+        booster_cmd_ptr->data2 = 0;
+    }
+#endif
+}
 void deps_init()
     {
         booster_deps_ptr = new pyro::sentry_booster_deps_t();
@@ -189,7 +210,7 @@ void booster_dr16andaim2cmd(){
              booster_dr162cmd(notify_val);
             // booster_dr162chassis_cmd();
             //booster_dr16andaim2cmd();
-
+            chassis2gimbal_rx();
             
             sentry_booster_ptr->set_command(*booster_cmd_ptr);
             vTaskDelay(1);

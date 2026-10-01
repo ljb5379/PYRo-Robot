@@ -29,7 +29,10 @@ struct g2c_msg_t
 // 0x133 底盘→云台 数据（4 字节预留，格式待定）
 struct c2g_msg_t
 {
-    uint8_t data[4];
+    float shoot_speed; // 射速
+    uint8_t data2;
+    uint8_t data3;
+    
 
     static constexpr uint32_t ID = 0x133;
     static constexpr bsp_can::which_can BUS = bsp_can::can3;
