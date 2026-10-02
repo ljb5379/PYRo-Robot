@@ -9,7 +9,7 @@
       #define NAV_UART PYRO_UART10
  #endif
  #if BOARD == GIMBAL_BOARD
-    #define AUTOAIM_UART PYRO_UART7
+    #define AUTOAIM_UART PYRO_UART10
  #endif
 
 #define rad 40

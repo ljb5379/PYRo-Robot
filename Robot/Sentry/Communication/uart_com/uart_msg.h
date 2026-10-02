@@ -20,7 +20,7 @@ struct frame_tailer
     uint16_t crc16;
 };
 
-// 预留：mcu2aim 特有，CRC 之后额外一个回车字节
+// CRC 之后额外一个回车字节（\n），收/发两侧均使用
 struct frame_enter
 {
     uint8_t enter;
@@ -77,12 +77,12 @@ struct mcu2aim_data_t
     float curr_pitch;
     float self_v_magnitude;
     float self_v_angle;
-    float curr_speed;
+    float curr_speed;           //弹速
     uint8_t shoot_delay;
-    uint8_t state       : 5;
-    uint8_t stop_record : 1;
-    uint8_t autoaim     : 1;
-    uint8_t enemy_color : 1;
+    uint8_t state       : 5;   //自瞄模式，dafu  1
+    uint8_t stop_record : 1;   //0
+    uint8_t autoaim     : 1;   //1；
+    uint8_t enemy_color : 1;   //对面蓝发0，对面红发1
 } ;
 
 
@@ -106,12 +106,13 @@ struct mcu2nav_msg_t
     frame_tailer tailer;
 };
 
-// 收：AIM → MCU = [SOF][aim2mcu_data_t][CRC16]
+// 收：AIM → MCU = [SOF][aim2mcu_data_t][CRC16][enter]
 struct aim2mcu_msg_t
 {
     frame_header header;
     aim2mcu_data_t data;
     frame_tailer tailer;
+    frame_enter enter;
 };
 
 struct mcu2aim_msg_t
@@ -132,6 +133,8 @@ static_assert(sizeof(nav2mcu_data_t) == 25, "nav2mcu_data_t must be 25 bytes");
 static_assert(sizeof(mcu2nav_data_t) == 11, "mcu2nav_data_t must be 11 bytes");
 static_assert(sizeof(nav2mcu_msg_t) == 28, "nav2mcu_msg_t must be 28 bytes"); // 1 + 25 + 2
 static_assert(sizeof(mcu2nav_msg_t) == 14, "mcu2nav_msg_t must be 14 bytes"); // 1 + 11 + 2
+static_assert(sizeof(aim2mcu_data_t) == 26, "aim2mcu_data_t must be 26 bytes");
+static_assert(sizeof(aim2mcu_msg_t) == 30, "aim2mcu_msg_t must be 30 bytes"); // 1 + 26 + 2 + 1
 
 } // namespace pyro
 

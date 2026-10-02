@@ -19,6 +19,8 @@ float pitchspdcurrent;
 
 float yaw111,pitch111,roll111;
 
+//float
+
 void get_imu_width(const float curr_motor_pos,const float motor_max,const float motor_min
                 ,const float curr_imu_pos,float &imu_max , float &imu_min){
 imu_max = curr_imu_pos - curr_motor_pos + motor_max;
@@ -171,8 +173,8 @@ void sentry_gimbal_t::_solve(){
 #define IMUMODE 0
 
 // --- 备用 IMU 控制：重力前馈常量（世界系，需按 IMU 安装标定）---
-static constexpr float AI_GRAVITY_NEUTRAL_WORLD_RAD = 0.40f;
-static constexpr float AI_GRAVITY_FEEDFORWARD_GAIN   = 0.64f;
+static constexpr float AI_GRAVITY_NEUTRAL_WORLD_RAD = -0.40f;
+static constexpr float AI_GRAVITY_FEEDFORWARD_GAIN   = 0.84f;
 
 void sentry_gimbal_t::_gimbal_control(){
     
@@ -229,7 +231,7 @@ pitchspdcurrent = _ctx.data.current_data.pitch_spd;
 
     #if IMUMODE ==1
     float pitch_error=loop_fp32_constrain
-                    (_ctx.data.target_data.pitch_pos 
+                    (_ctx.cmd->target_pitch 
                 -   _ctx.data.imu_data.current_pitch_rad,
                     -PI,PI);
 
@@ -256,15 +258,11 @@ low_pass_filter(   _ctx.pid.pitch_spd_pid
 
 
 target_pitch1 = _ctx.data.target_data.pitch_pos;
-target_pitch2 =-0.4f - flitter_gravaty_error_angle;
-current_pitch1 = _ctx.data.current_data.pitch_pos;
-                    
-pitchspdtarget =  pitch_pid_pos_out;
-pitchspdcurrent = _ctx.data.current_data.pitch_spd;
+
 
     float yaw_error=loop_fp32_constrain
                     (_ctx.data.target_data.yaw_pos 
-                -   _ctx.data.current_data.yaw_pos,
+                -   _ctx.data.imu_data.current_yaw_rad,
                     -PI,PI);
 
                     
@@ -282,8 +280,8 @@ pitchspdcurrent = _ctx.data.current_data.pitch_spd;
 void sentry_gimbal_t::_AI_gimbal_control()
 {
     // 目标：自瞄下发的世界系 yaw/pitch（auto_mode 下 cmd->target_* = shoot_*）
-    const float target_world_yaw   = _ctx.cmd->target_yaw;
-    const float target_world_pitch = _ctx.cmd->target_pitch;
+    const float target_world_yaw   = _ctx.cmd->delta_yaw*85 + 0*_ctx.data.target_data.yaw_pos;
+    const float target_world_pitch =  _ctx.cmd->delta_pitch*100+ 0*_ctx.data.target_data.pitch_pos;
 
     // 当前量：IMU 世界系姿态（炮管方向）+ 小云台电机角（相对底盘，已减 offset）
     const float imu_world_yaw   = _ctx.data.imu_data.current_yaw_rad;
@@ -291,22 +289,23 @@ void sentry_gimbal_t::_AI_gimbal_control()
     const float motor_yaw       = _ctx.data.current_data.yaw_pos;
     const float motor_pitch     = _ctx.data.current_data.pitch_pos;
 
+target_pitch1 = motor_pitch;
     // 底盘（大 yaw / 坡度）世界姿态 = 炮管世界姿态 − 小云台电机角
     // 注意：符号需按电机/IMU 安装方向实测标定，反号会导致斜坡上反向
     const float gimbal_yaw   = imu_world_yaw   - motor_yaw;
     const float gimbal_pitch = imu_world_pitch - motor_pitch;
 
     // --- 俯仰：期望电机角 = 世界目标 − 底盘坡度，夹机械限幅 ---
-    float desired_motor_pitch = target_world_pitch - gimbal_pitch;
+    float desired_motor_pitch = -(target_world_pitch - imu_world_pitch)/5 + motor_pitch;
     desired_motor_pitch = loop_fp32_constrain(desired_motor_pitch,
                                               _ctx.data.pitch_min_rad,
                                               _ctx.data.pitch_max_rad);
-    float pitch_error = desired_motor_pitch - motor_pitch;   // 限幅内 == target_world_pitch - imu_pitch
+    float pitch_error = desired_motor_pitch - motor_pitch;   // 限幅内 == 
     float pitch_pos_out = _ctx.pid.pitch_pos_pid->calculate(pitch_error, 0);
-
+        target_pitch2 = pitch_error;
     // 重力前馈：以世界系 pitch 为参考（斜坡上仍正确），常数需按 IMU 安装标定
     static float filt_grav_err = 0.0f;
-    float grav_err = AI_GRAVITY_NEUTRAL_WORLD_RAD - imu_world_pitch;
+    float grav_err = (-0.22 - imu_world_pitch)/5;
     low_pass_filter(grav_err, &filt_grav_err, 0.4f);
 
     low_pass_filter(
@@ -314,11 +313,15 @@ void sentry_gimbal_t::_AI_gimbal_control()
             - AI_GRAVITY_FEEDFORWARD_GAIN * cos(filt_grav_err),
         &_ctx.data.out_data.pitch_torque, 0.1f);
 
+
+
+
     // --- 偏航：期望电机角 = 世界目标 − 底盘朝向，夹小 yaw 限幅（大 yaw 360° 由底盘负责）---
     float residual_yaw = loop_fp32_constrain(target_world_yaw - gimbal_yaw, -PI, PI);
-    float desired_motor_yaw = loop_fp32_constrain(residual_yaw,
-                                                  _ctx.data.yaw_min_rad,
-                                                  _ctx.data.yaw_max_rad);
+    float desired_motor_yaw = residual_yaw;
+    if(desired_motor_yaw > _ctx.data.yaw_max_rad) residual_yaw = _ctx.data.yaw_max_rad;
+    if(desired_motor_yaw < _ctx.data.yaw_min_rad) residual_yaw = _ctx.data.yaw_min_rad;
+
     float yaw_error = desired_motor_yaw - motor_yaw;   // 限幅内 == target_world_yaw - imu_yaw
     float yaw_pos_out = _ctx.pid.yaw_pos_pid->calculate(yaw_error, 0);
     _ctx.data.out_data.yaw_torque = _ctx.pid.yaw_spd_pid->calculate(
@@ -327,7 +330,7 @@ void sentry_gimbal_t::_AI_gimbal_control()
 
 void sentry_gimbal_t::_send_motor_command() const{
     _ctx.motor.motor_pitch->send_torque(_ctx.data.out_data.pitch_torque*1);
-    _ctx.motor.motor_yaw->send_torque(_ctx.data.out_data.yaw_torque);
+    _ctx.motor.motor_yaw->send_torque(_ctx.data.out_data.yaw_torque*1);
 
 }
 void sentry_gimbal_t::_fsm_execute()

@@ -132,7 +132,7 @@ void aim_t::run_loop_impl()
         static aim2mcu_msg_t pkt;
         static size_t xReceivedBytes;
         if (xMessageBufferReceive(_rx_msg_buf, &pkt, sizeof(pkt),
-                                  portMAX_DELAY) == sizeof(aim2mcu_msg_t))
+                                  400) == sizeof(aim2mcu_msg_t))
         {
             // 收到首帧，判定在线
             _is_online = true;
@@ -164,8 +164,9 @@ void aim_t::run_loop_impl()
 bool aim_t::rx_callback(const uint8_t *p_data, const uint16_t size,
                         BaseType_t &xHigherPriorityTaskWoken) const
 {
-    // ISR 最小校验：帧起始 + 整帧长度（导航帧无末尾回车，故不做结尾字节判断）
-    if (size == sizeof(aim2mcu_msg_t) && p_data[0] == RX_SOF)
+    // ISR 最小校验：帧起始 + 整帧长度 + 帧尾回车
+    if (size == sizeof(aim2mcu_msg_t) && p_data[0] == RX_SOF &&
+        p_data[sizeof(aim2mcu_msg_t) - 1] == RX_ENTER)
     {
         xMessageBufferSendFromISR(_rx_msg_buf, p_data, sizeof(aim2mcu_msg_t),
                                   &xHigherPriorityTaskWoken);
@@ -177,9 +178,9 @@ bool aim_t::rx_callback(const uint8_t *p_data, const uint16_t size,
 /* Protocol Helpers ----------------------------------------------------------*/
 status_t aim_t::error_check(const aim2mcu_msg_t *buf)
 {
-    // CRC16 校验（整帧）
+    // CRC16 校验（覆盖 SOF + data，不含帧尾回车）
     if (!verify_crc16_check_sum(reinterpret_cast<uint8_t const *>(buf),
-                                sizeof(aim2mcu_msg_t)))
+                                sizeof(aim2mcu_msg_t) - 1))
     {
         return PYRO_ERROR;
     }
@@ -204,11 +205,14 @@ status_t aim_t::send_cmd(const mcu2aim_data_t &cmd) const
     // 2. 拷贝载荷
     memcpy(&_tx_buffer->data, &cmd, sizeof(mcu2aim_data_t));
 
-    // 3. 填充帧尾（CRC16，覆盖 SOF + data）
-    append_crc16_check_sum(reinterpret_cast<uint8_t *>(_tx_buffer),
-                           sizeof(mcu2aim_msg_t));
+    // 3. 填充帧尾回车
+    _tx_buffer->enter.enter = TX_ENTER;
 
-    // 4. DMA 写
+    // 4. 填充 CRC16（覆盖 SOF + data，不含帧尾回车）
+    append_crc16_check_sum(reinterpret_cast<uint8_t *>(_tx_buffer),
+                           sizeof(mcu2aim_msg_t) - 1);
+
+    // 5. DMA 写
     return _uart_drv->write(reinterpret_cast<uint8_t *>(_tx_buffer),
                             sizeof(mcu2aim_msg_t));
 }

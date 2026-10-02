@@ -29,21 +29,20 @@ static pyro::sentry_booster_deps_t *booster_deps_ptr             = nullptr;
 static pyro::aim2mcu_data_t aim2booster_msg;
 
 
-
 extern "C" {
 static void deps_init();
 static void booster_dr162cmd(uint32_t notify_value);
-static void chassis2gimbal_rx();
+static void chassis2booster_rx();
 
-static void chassis2gimbal_rx()
+static void chassis2booster_rx()
 {
-    c2g_msg_t msg;
-    if (pyro::board_comm_t::instance().read(msg))
+    c2g_msg_t boostermsg;
+    if (pyro::board_comm_t::instance().read(boostermsg))
     {
         // 4字节预留数据，格式待定
-        booster_cmd_ptr->shoot_speed = msg.shoot_speed;
-        booster_cmd_ptr->data1 = msg.data2;
-        booster_cmd_ptr->data2 = msg.data3;
+        booster_cmd_ptr->shoot_speed = boostermsg.shoot_speed;
+        booster_cmd_ptr->data1 = boostermsg.data2;
+        booster_cmd_ptr->data2 = boostermsg.data3;
     }
 #if BOARD_COMM_TIMEOUT_C2G_ENABLE
     else if (pyro::board_comm_t::instance().is_stale<c2g_msg_t>(BOARD_COMM_TIMEOUT_C2G_MS))
@@ -149,7 +148,7 @@ void booster_dr162cmd(uint32_t notify_value)
     }
 
 }
-void booster_dr16andaim2cmd(){
+void booster_dr16andaim2cmd(uint32_t notify_value){
     
     
     if(aim_t::get_instance()->check_online() == false)
@@ -187,10 +186,22 @@ void booster_dr16andaim2cmd(){
     bool aim_open = false;
     if(vrc.switches.right.current_pos == pyro::sw_pos_t::DOWN){aim_open = true;}
     if(aim_open){
-    booster_cmd_ptr->fric_on = aim2booster_msg.aim_state;
-    booster_cmd_ptr->fire_count = aim2booster_msg.fire;
-    booster_cmd_ptr->multi_shoot = !aim2booster_msg.is_single_shot;
+    booster_cmd_ptr->fric_on = true;//aim2booster_msg.fire;
     
+    booster_cmd_ptr->multi_shoot = false;//!aim2booster_msg.is_single_shot;
+
+    //booster_cmd_ptr->fire_count += aim2booster_msg.fire;
+
+    if( !booster_cmd_ptr->multi_shoot ){
+        
+        if(notify_value & EVENT_BIT_SINGGLE_SHOOT)
+        {   
+            //booster_cmd_ptr->singgle_shoot          =  !booster_cmd_ptr->singgle_shoot;
+            
+            booster_cmd_ptr->fire_count ++;
+            booster_cmd_ptr->multi_shoot        =  0;
+        }
+    }
     }
 
 }
@@ -207,11 +218,11 @@ void booster_dr16andaim2cmd(){
 
             //chassis_rxcmd();
             // 如果后续希望由底盘板直接解算 RC，可以取消下面这行的注释
-             booster_dr162cmd(notify_val);
+            //booster_dr162cmd(notify_val);
             // booster_dr162chassis_cmd();
-            //booster_dr16andaim2cmd();
-            chassis2gimbal_rx();
             
+            chassis2booster_rx();
+            booster_dr16andaim2cmd(notify_val);
             sentry_booster_ptr->set_command(*booster_cmd_ptr);
             vTaskDelay(1);
         }

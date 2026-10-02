@@ -25,7 +25,7 @@ void rudder_chassis_t::state_active_t::execute(owner *owner)
 {
 
     
-    owner->_communicate_gimbal();
+    //owner->_communicate_gimbal();
 
     owner->_kinematics_solve();
     owner->_rudder_control();

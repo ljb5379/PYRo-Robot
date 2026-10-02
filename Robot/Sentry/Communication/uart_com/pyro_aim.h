@@ -69,8 +69,10 @@ class aim_t
     bool _is_online;
 
     // TODO 用户填实际帧头
-    static constexpr uint8_t RX_SOF = 0xA1; // 导航 → MCU
-    static constexpr uint8_t TX_SOF = 0xA4; // MCU → 导航
+    static constexpr uint8_t RX_SOF = 0xA5; //
+    static constexpr uint8_t TX_SOF = 0xA5; //
+    static constexpr uint8_t RX_ENTER = 0x0A; // 帧尾回车 \n
+    static constexpr uint8_t TX_ENTER = 0x0A; // 帧尾回车 \n
 
     /* Private Methods (Logic) -----------------------------------------------*/
     void init_impl();

@@ -134,8 +134,39 @@ namespace pyro{
 
 void sentry_booster_t::_fric_control(){
     if(_ctx.cmd->fric_on){
-        _ctx.data.target_data.left_spd =       BOOSTER_SHOOT_FRIC_RADPS;//有裁判系统后速度换成计算值
-        _ctx.data.target_data.right_spd =    - BOOSTER_SHOOT_FRIC_RADPS;
+        static bool first_time = true;
+        static float fric_spd = BOOSTER_SHOOT_FRIC_LINE_V;
+            
+        // _ctx.data.target_data.left_spd =       BOOSTER_SHOOT_FRIC_RADPS;//有裁判系统后速度换成计算值
+        // _ctx.data.target_data.right_spd =    - BOOSTER_SHOOT_FRIC_RADPS;
+        if(_ctx.cmd->shoot_speed>1e-5){
+            if(_ctx.cmd->shoot_speed>BOOSTER_SHOOT_MAX_SPEED){
+                // _ctx.data.target_data.left_spd -= BOOSTER_SHOOT_DELTA_V;
+                // _ctx.data.target_data.right_spd += BOOSTER_SHOOT_DELTA_V;
+                fric_spd -= BOOSTER_SHOOT_DELTA_V;
+            }
+            else if(_ctx.cmd->shoot_speed<BOOSTER_SHOOT_MIN_SPEED){
+                // _ctx.data.target_data.left_spd += BOOSTER_SHOOT_DELTA_V;
+                // _ctx.data.target_data.right_spd -= BOOSTER_SHOOT_DELTA_V;
+                fric_spd += BOOSTER_SHOOT_DELTA_V;
+            }
+            else{}
+
+            if(fric_spd>BOOSTER_SHOOT_FRIC_LINE_V*1.3f){
+                fric_spd = BOOSTER_SHOOT_FRIC_LINE_V*1.3f;
+            }
+            else if(fric_spd<BOOSTER_SHOOT_FRIC_LINE_V*0.7f){
+                fric_spd = BOOSTER_SHOOT_FRIC_LINE_V*0.7f;
+            }
+            else{}
+
+
+
+
+            
+        }
+            _ctx.data.target_data.left_spd =       fric_spd/BOOSTER_FRIC_R;
+            _ctx.data.target_data.right_spd =    - fric_spd/BOOSTER_FRIC_R ;
     }
     else{
         _ctx.data.target_data.left_spd   =       0.0f;//有裁判系统后速度换成计算值

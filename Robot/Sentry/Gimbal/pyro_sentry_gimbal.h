@@ -25,7 +25,7 @@ struct sentry_gimbal_cmd_t: public cmd_base_t
     float target_pitch;
     uint8_t aim_mode;
     /// @brief 从底盘接收的数据 (CAN ID 0x133)，4字节预留，格式待定
-
+    float shoot_speed;
     
 
     // float imu_yaw;

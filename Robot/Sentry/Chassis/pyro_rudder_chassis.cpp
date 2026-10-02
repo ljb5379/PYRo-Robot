@@ -454,10 +454,10 @@ void rudder_chassis_t::_send_motor_command() const
 void rudder_chassis_t::_communicate_gimbal() const
 {
     c2g_msg_t msg{};
-    msg.data[0] = _ctx.data.bus_tx_data[0];
-    msg.data[1] = _ctx.data.bus_tx_data[1];
-    msg.data[2] = _ctx.data.bus_tx_data[2];
-    msg.data[3] = _ctx.data.bus_tx_data[3];
+    //msg.data[0] = _ctx.data.bus_tx_data[0];
+    //msg.data[1] = _ctx.data.bus_tx_data[1];
+    //msg.data[2] = _ctx.data.bus_tx_data[2];
+    //msg.data[3] = _ctx.data.bus_tx_data[3];
 
     pyro::board_comm_t::instance().send(msg);
 }

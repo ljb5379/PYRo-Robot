@@ -26,7 +26,27 @@ static pyro::sentry_gimbal_cmd_t *gimbal_cmd_ptr               = nullptr;
 static pyro::sentry_gimbal_deps_t *gimbal_deps_ptr             = nullptr;
 
 aim2mcu_data_t aim2gimbal_msg;
+static void chassis2gimbal_rx();
 
+static void chassis2gimbal_rx()
+{
+    c2g_msg_t gimbalmsg;
+    if (pyro::board_comm_t::instance().read(gimbalmsg))
+    {
+        // 4字节预留数据，格式待定
+        gimbal_cmd_ptr->shoot_speed = gimbalmsg.shoot_speed;
+
+    }
+#if BOARD_COMM_TIMEOUT_C2G_ENABLE
+    else if (pyro::board_comm_t::instance().is_stale<c2g_msg_t>(BOARD_COMM_TIMEOUT_C2G_MS))
+    {
+        // 底盘失联：数据清零
+        gimbal_cmd_ptr->shoot_speed = 0;
+        gimbal_cmd_ptr->data1 = 0;
+        gimbal_cmd_ptr->data2 = 0;
+    }
+#endif
+}
 
 
 extern "C" {
@@ -339,7 +359,7 @@ void gimbal_dr162chassis_cmd(uint32_t notify_value)         // 手动// 右下�
         return;
     }
 
-    active              = 1;
+    active              = 1*0;
     vx     = static_cast<int8_t>(-(vrc.axes.ly) * 127);
     vy     = static_cast<int8_t>(vrc.axes.lx * 127);
     wz     = 0;
@@ -395,12 +415,12 @@ void gimbal_mcu2aim_data(){
         mcu2aim_msg.curr_pitch       = pitch;
         mcu2aim_msg.self_v_magnitude = 0;
         mcu2aim_msg.self_v_angle     = 0;
-        mcu2aim_msg.curr_speed       = 0;
+        mcu2aim_msg.curr_speed       = gimbal_cmd_ptr->shoot_speed;
         mcu2aim_msg.shoot_delay      = 0;
-        mcu2aim_msg.state            = _ctx.cmd->aim_mode;
+        mcu2aim_msg.state            = 1;
         mcu2aim_msg.stop_record      = 0;
-        mcu2aim_msg.autoaim          = _ctx.cmd->auto_mode;
-        mcu2aim_msg.enemy_color      = 1;       
+        mcu2aim_msg.autoaim          = 1 + 0 * _ctx.cmd->auto_mode;
+        mcu2aim_msg.enemy_color      = 0;       
         pyro::aim_t::get_instance()->send_cmd(mcu2aim_msg);
 
 
@@ -419,13 +439,13 @@ void sentry_gimbal_thread(void *argument)
 
         
         // 云台接收指令 手动在代码中开关
-         gimbal_dr162cmd();
-         //gimbal_dr16andaim2cmd(); 
-
+        // gimbal_dr162cmd();
+         gimbal_dr16andaim2cmd(); 
+        chassis2gimbal_rx();
          //云台转发指令
-        //gimbal_dr162chassis_cmd(notify_val);
-        gimbal_dr16andnav2chassis_cmd(notify_val);
-
+        gimbal_dr162chassis_cmd(notify_val);
+        //gimbal_dr16andnav2chassis_cmd(notify_val);
+        gimbal_mcu2aim_data();
         
 
         sentry_gimbal_ptr->set_command(*gimbal_cmd_ptr);

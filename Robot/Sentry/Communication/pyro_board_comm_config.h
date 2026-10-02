@@ -20,7 +20,7 @@
 #define BOARD_COMM_TIMEOUT_IMU_MS       10
 
 // c2g 底盘→云台 数据：失联后 chassis_data 清零（格式待定，默认关闭）
-#define BOARD_COMM_TIMEOUT_C2G_ENABLE   1
+#define BOARD_COMM_TIMEOUT_C2G_ENABLE   0
 #define BOARD_COMM_TIMEOUT_C2G_MS       10
 
 #endif // PYRO_BOARD_COMM_CONFIG_H

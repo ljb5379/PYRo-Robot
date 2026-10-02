@@ -65,8 +65,8 @@ if (BOARD STREQUAL "GIMBAL_BOARD")
     )
     target_compile_definitions(PYRo PUBLIC
             DR16_UART=PYRO_UART5
-            JCOM_DEBUG_PORT=PYRO_UART1
-            AUTOAIM_UART=PYRO_UART7
+            #JCOM_DEBUG_PORT=PYRO_UART1
+            AUTOAIM_UART=PYRO_UART1
     )
 
 elseif (BOARD STREQUAL "CHASSIS_BOARD")

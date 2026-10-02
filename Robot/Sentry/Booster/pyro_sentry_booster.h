@@ -12,6 +12,7 @@
 #include "pyro_dm_motor_drv.h"
 
 
+
 namespace pyro
 {
 struct sentry_booster_cmd_t: public cmd_base_t
