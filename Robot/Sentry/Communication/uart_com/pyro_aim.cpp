@@ -163,10 +163,10 @@ void aim_t::run_loop_impl()
 /* ISR Callback --------------------------------------------------------------*/
 bool aim_t::rx_callback(const uint8_t *p_data, const uint16_t size,
                         BaseType_t &xHigherPriorityTaskWoken) const
-{
+{   
     // ISR 最小校验：帧起始 + 整帧长度 + 帧尾回车
-    if (size == sizeof(aim2mcu_msg_t) && p_data[0] == RX_SOF &&
-        p_data[sizeof(aim2mcu_msg_t) - 1] == RX_ENTER)
+    if (size == sizeof(aim2mcu_msg_t) && p_data[0] == RX_SOF 
+                                      && p_data[sizeof(aim2mcu_msg_t) - 1] == RX_ENTER)
     {
         xMessageBufferSendFromISR(_rx_msg_buf, p_data, sizeof(aim2mcu_msg_t),
                                   &xHigherPriorityTaskWoken);

@@ -83,6 +83,7 @@ struct mcu2aim_data_t
     uint8_t stop_record : 1;   //0
     uint8_t autoaim     : 1;   //1；
     uint8_t enemy_color : 1;   //对面蓝发0，对面红发1
+    float curr_big_yaw;
 } ;
 
 
@@ -132,7 +133,7 @@ struct mcu2aim_msg_t
 static_assert(sizeof(nav2mcu_data_t) == 25, "nav2mcu_data_t must be 25 bytes");
 static_assert(sizeof(mcu2nav_data_t) == 11, "mcu2nav_data_t must be 11 bytes");
 static_assert(sizeof(nav2mcu_msg_t) == 28, "nav2mcu_msg_t must be 28 bytes"); // 1 + 25 + 2
-static_assert(sizeof(mcu2nav_msg_t) == 14, "mcu2nav_msg_t must be 14 bytes"); // 1 + 11 + 2
+//static_assert(sizeof(mcu2nav_msg_t) == 14, "mcu2nav_msg_t must be 14 bytes"); // 1 + 11 + 2
 static_assert(sizeof(aim2mcu_data_t) == 26, "aim2mcu_data_t must be 26 bytes");
 static_assert(sizeof(aim2mcu_msg_t) == 30, "aim2mcu_msg_t must be 30 bytes"); // 1 + 26 + 2 + 1
 

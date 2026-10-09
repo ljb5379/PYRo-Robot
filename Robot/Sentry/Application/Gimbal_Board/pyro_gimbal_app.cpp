@@ -136,14 +136,14 @@ void gimbal_dr162cmd()                                      //_______纯手动�
 }
 void gimbal_dr16andaim2cmd()                                //  自瞄 + 遥控开关
 {
-    if(aim_t::get_instance()->check_online() == false)
-    {
-        gimbal_cmd_ptr->aim_mode = 0;
-        gimbal_cmd_ptr->target_yaw = 0;
-        gimbal_cmd_ptr->target_pitch = 0;
-        gimbal_cmd_ptr->auto_mode = false;
-        return;
-    }
+    // if(aim_t::get_instance()->check_online() == false)
+    // {
+    //     gimbal_cmd_ptr->aim_mode = 0;
+    //     gimbal_cmd_ptr->target_yaw = 0;
+    //     gimbal_cmd_ptr->target_pitch = 0;
+    //     gimbal_cmd_ptr->auto_mode = false;
+    //     return;
+    // }
 
     aim2gimbal_msg = aim_t::get_instance()->get_rx_msg();
     
@@ -166,6 +166,15 @@ void gimbal_dr16andaim2cmd()                                //  自瞄 + 遥控�
     }
     gimbal_cmd_ptr->mode              = pyro::cmd_base_t::mode_t::ACTIVE;
 
+    if(pyro::sw_pos_t::MID == vrc.switches.right.current_pos)
+    {
+        
+        gimbal_cmd_ptr->delta_pitch = vrc.axes.ry * 0.005f;
+        gimbal_cmd_ptr->delta_yaw   = 1* (-vrc.axes.rx * 0.008f);
+        gimbal_cmd_ptr->auto_mode = false;
+        return;
+
+    }
     gimbal_cmd_ptr->auto_mode = true;
 
 //____________________自瞄自主控制_______________________//
@@ -359,7 +368,7 @@ void gimbal_dr162chassis_cmd(uint32_t notify_value)         // 手动// 右下�
         return;
     }
 
-    active              = 1*0;
+    active              = 1;
     vx     = static_cast<int8_t>(-(vrc.axes.ly) * 127);
     vy     = static_cast<int8_t>(vrc.axes.lx * 127);
     wz     = 0;
@@ -373,6 +382,7 @@ void gimbal_dr162chassis_cmd(uint32_t notify_value)         // 手动// 右下�
     static uint16_t spinning_count = 0;
 
     if(pyro::sw_pos_t::DOWN == vrc.switches.right.current_pos){
+        active = 0 ; //————————————————————————————————————————调试自瞄零时加的
         if(spinning_count > 1000)
         {
             spinning = true;
@@ -417,9 +427,9 @@ void gimbal_mcu2aim_data(){
         mcu2aim_msg.self_v_angle     = 0;
         mcu2aim_msg.curr_speed       = gimbal_cmd_ptr->shoot_speed;
         mcu2aim_msg.shoot_delay      = 0;
-        mcu2aim_msg.state            = 1;
+        mcu2aim_msg.state            = 0;
         mcu2aim_msg.stop_record      = 0;
-        mcu2aim_msg.autoaim          = 1 + 0 * _ctx.cmd->auto_mode;
+        mcu2aim_msg.autoaim          = _ctx.cmd->auto_mode;
         mcu2aim_msg.enemy_color      = 0;       
         pyro::aim_t::get_instance()->send_cmd(mcu2aim_msg);
 

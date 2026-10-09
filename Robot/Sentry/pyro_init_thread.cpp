@@ -74,7 +74,7 @@ extern "C"
 #ifdef AUTOAIM_UART
         // 外部自瞄/导航 UART（默认 UART7）：先建流 + 起解析线程，再使能接收
         pyro::aim_t::get_instance()->start_rx();
-        AUTOAIM_UART.reset(115200, UART_WORDLENGTH_8B,
+        AUTOAIM_UART.reset(921600, UART_WORDLENGTH_8B,
                                             UART_STOPBITS_1, UART_PARITY_NONE); // TODO 用户填实际串口/波特率（与 uart_comm.cpp 的 get_instance 保持一致）
        
         AUTOAIM_UART.enable_rx_dma();

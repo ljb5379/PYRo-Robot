@@ -150,16 +150,18 @@ void sentry_gimbal_t::_solve(){
         {_ctx.cmd->delta_yaw=0.0f;}
 
 
-    _ctx.data.target_data.pitch_pos  += _ctx.cmd->delta_pitch;
-    _ctx.data.target_data.yaw_pos    += _ctx.cmd->delta_yaw;
+    //_ctx.data.target_data.pitch_pos  += _ctx.cmd->delta_pitch;
+    //_ctx.data.target_data.yaw_pos    += _ctx.cmd->delta_yaw;
+    _ctx.data.target_data.pitch_pos  = _ctx.cmd->delta_pitch*80;
+    _ctx.data.target_data.yaw_pos    = _ctx.cmd->delta_yaw*80;
     }
 
 
 //统一进行限位
-    if(_ctx.data.target_data.pitch_pos>_ctx.data.pitch_max_rad)
-        {_ctx.data.target_data.pitch_pos=_ctx.data.pitch_max_rad;}
-    if(_ctx.data.target_data.pitch_pos<_ctx.data.pitch_min_rad)
-        {_ctx.data.target_data.pitch_pos=_ctx.data.pitch_min_rad;}
+    // if(_ctx.data.target_data.pitch_pos>_ctx.data.pitch_max_rad)
+    //     {_ctx.data.target_data.pitch_pos=_ctx.data.pitch_max_rad;}
+    // if(_ctx.data.target_data.pitch_pos<_ctx.data.pitch_min_rad)
+    //     {_ctx.data.target_data.pitch_pos=_ctx.data.pitch_min_rad;}
 
     if( _ctx.data.target_data.yaw_pos>_ctx.data.yaw_max_rad)
         { _ctx.data.target_data.yaw_pos=_ctx.data.yaw_max_rad;}
@@ -280,8 +282,8 @@ target_pitch1 = _ctx.data.target_data.pitch_pos;
 void sentry_gimbal_t::_AI_gimbal_control()
 {
     // 目标：自瞄下发的世界系 yaw/pitch（auto_mode 下 cmd->target_* = shoot_*）
-    const float target_world_yaw   = _ctx.cmd->delta_yaw*85 + 0*_ctx.data.target_data.yaw_pos;
-    const float target_world_pitch =  _ctx.cmd->delta_pitch*100+ 0*_ctx.data.target_data.pitch_pos;
+    const float target_world_yaw   = _ctx.data.target_data.yaw_pos;
+    const float target_world_pitch = _ctx.data.target_data.pitch_pos;
 
     // 当前量：IMU 世界系姿态（炮管方向）+ 小云台电机角（相对底盘，已减 offset）
     const float imu_world_yaw   = _ctx.data.imu_data.current_yaw_rad;
@@ -297,12 +299,13 @@ target_pitch1 = motor_pitch;
 
     // --- 俯仰：期望电机角 = 世界目标 − 底盘坡度，夹机械限幅 ---
     float desired_motor_pitch = -(target_world_pitch - imu_world_pitch)/5 + motor_pitch;
-    desired_motor_pitch = loop_fp32_constrain(desired_motor_pitch,
-                                              _ctx.data.pitch_min_rad,
-                                              _ctx.data.pitch_max_rad);
+
+    if(desired_motor_pitch > _ctx.data.pitch_max_rad) desired_motor_pitch = _ctx.data.pitch_max_rad;
+    if(desired_motor_pitch < _ctx.data.pitch_min_rad) desired_motor_pitch = _ctx.data.pitch_min_rad;
+
     float pitch_error = desired_motor_pitch - motor_pitch;   // 限幅内 == 
     float pitch_pos_out = _ctx.pid.pitch_pos_pid->calculate(pitch_error, 0);
-        target_pitch2 = pitch_error;
+        
     // 重力前馈：以世界系 pitch 为参考（斜坡上仍正确），常数需按 IMU 安装标定
     static float filt_grav_err = 0.0f;
     float grav_err = (-0.22 - imu_world_pitch)/5;
