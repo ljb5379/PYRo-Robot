@@ -12,5 +12,11 @@
     #define AUTOAIM_UART PYRO_UART7
  #endif
 
+
+//调试时使用，开关自瞄和导航。暂时不同时开
+#define AUTOAIM_MODE 0
+#define NAV_MODE 1
+
+
 #define rad 40
 #endif

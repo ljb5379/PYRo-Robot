@@ -30,7 +30,7 @@ imu_min = curr_imu_pos - curr_motor_pos + motor_min;
 
 namespace pyro{
 
-    jcom_drv_t jcom_drv(15,&JCOM_DEBUG_PORT);
+    
 
 
     float low_pass_filter(float input, float *prev_output, float alpha)
@@ -135,44 +135,54 @@ namespace pyro{
 
 void sentry_gimbal_t::_solve(){
 
-    //先对模式进行判断 若自瞄模式则为给定数值（暂定）， 若手动控制则为增量
+    
+#if AUTOAIM_MODE//若使用自瞄，全用imu控制
+//先对模式进行判断 若自瞄模式则为给定数值，若手动控制则为增量，若给超出范围值则保持旧值
 
-    if(_ctx.cmd->auto_mode == true)
+    _ctx.data.imu_ctr_en = true;
+    if(_ctx.cmd->auto_mode == true&& fabs(_ctx.cmd->target_pitch)<50.0f && fabs(_ctx.cmd->yaw) <50.0f)
     {
-        _ctx.data.target_data.pitch_pos = _ctx.cmd->target_pitch;
-        _ctx.data.target_data.yaw_pos = _ctx.cmd->target_yaw;
+       _ctx.data.imu_data.target_pitch_rad = _ctx.cmd->target_pitch;
+       _ctx.data.imu_data.target_yaw_rad = _ctx.cmd->target_yaw;
 
     }
-    else{
+    else if(fabs(_ctx.cmd->target_pitch)>50.0f || fabs(_ctx.cmd->yaw) >50.0f) {
+        _ctx.data.imu_data.target_pitch_rad = _ctx.data.current_data.pitch_pos;
+        _ctx.data.imu_data.target_yaw_rad   = _ctx.data.current_data.yaw_pos;
+            return;
+    }
+    else {
+        _ctx.data.imu_data.target_pitch_rad += _ctx.cmd->delta_pitch;
+        _ctx.data.imu_data.target_yaw_rad   += _ctx.cmd->delta_yaw;
+    }
+#else//不使能自瞄，用电机角度控制
+    #if IMU_MODE==0
+    _ctx.data.imu_ctr_en = false;
     if(_ctx.cmd->delta_pitch<0.00005f && _ctx.cmd->delta_pitch>-0.00005f)
         {_ctx.cmd->delta_pitch=0.0f;}
     if(_ctx.cmd->delta_yaw<0.00005f && _ctx.cmd->delta_yaw>-0.00005f)
         {_ctx.cmd->delta_yaw=0.0f;}
 
 
-    //_ctx.data.target_data.pitch_pos  += _ctx.cmd->delta_pitch;
-    //_ctx.data.target_data.yaw_pos    += _ctx.cmd->delta_yaw;
-    _ctx.data.target_data.pitch_pos  = _ctx.cmd->delta_pitch*80;
-    _ctx.data.target_data.yaw_pos    = _ctx.cmd->delta_yaw*80;
-    }
-
-
-//统一进行限位
-    // if(_ctx.data.target_data.pitch_pos>_ctx.data.pitch_max_rad)
-    //     {_ctx.data.target_data.pitch_pos=_ctx.data.pitch_max_rad;}
-    // if(_ctx.data.target_data.pitch_pos<_ctx.data.pitch_min_rad)
-    //     {_ctx.data.target_data.pitch_pos=_ctx.data.pitch_min_rad;}
+    _ctx.data.target_data.pitch_pos  += _ctx.cmd->delta_pitch;
+    _ctx.data.target_data.yaw_pos    += _ctx.cmd->delta_yaw;
 
     if( _ctx.data.target_data.yaw_pos>_ctx.data.yaw_max_rad)
         { _ctx.data.target_data.yaw_pos=_ctx.data.yaw_max_rad;}
     if( _ctx.data.target_data.yaw_pos<_ctx.data.yaw_min_rad)
         { _ctx.data.target_data.yaw_pos=_ctx.data.yaw_min_rad;}
+    #endif
+    #if IMU_MODE==1
+        _ctx.data.imu_ctr_en = true;
+        _ctx.data.imu_data.target_pitch_rad += _ctx.cmd->delta_pitch;
+        _ctx.data.imu_data.target_yaw_rad   += _ctx.cmd->delta_yaw;
+    #endif
+#endif
 
-//jcom_drv.add_data()
 
 }
 
-#define IMUMODE 0
+
 
 // --- 备用 IMU 控制：重力前馈常量（世界系，需按 IMU 安装标定）---
 static constexpr float AI_GRAVITY_NEUTRAL_WORLD_RAD = -0.40f;
@@ -180,7 +190,7 @@ static constexpr float AI_GRAVITY_FEEDFORWARD_GAIN   = 0.84f;
 
 void sentry_gimbal_t::_gimbal_control(){
     
-#if IMUMODE==0
+if(_ctx.data.imu_ctr_en==false){
     float pitch_error=loop_fp32_constrain
                     (_ctx.data.target_data.pitch_pos 
                 -   _ctx.data.current_data.pitch_pos,
@@ -222,68 +232,26 @@ pitchspdcurrent = _ctx.data.current_data.pitch_spd;
 
                     
   
-    //float yaw_pid_pos_out=_ctx.pid.yaw_pos_pid->calculate(yaw_error,0);
-    float yaw_pid_pos_out=_ctx.pid.yaw_pos_pid->calculate( _ctx.cmd->delta_yaw*85 , _ctx.data.current_data.yaw_pos);
+    float yaw_pid_pos_out=_ctx.pid.yaw_pos_pid->calculate(yaw_error,0);
+    //float yaw_pid_pos_out=_ctx.pid.yaw_pos_pid->calculate( _ctx.cmd->delta_yaw*85 , _ctx.data.current_data.yaw_pos);
     
 
     _ctx.data.out_data.yaw_torque=_ctx.pid.yaw_spd_pid
                         ->calculate(yaw_pid_pos_out,
                                     _ctx.data.current_data.yaw_spd);
-    #endif
-
-    #if IMUMODE ==1
-    float pitch_error=loop_fp32_constrain
-                    (_ctx.cmd->target_pitch 
-                -   _ctx.data.imu_data.current_pitch_rad,
-                    -PI,PI);
-
-    float pitch_pid_pos_out =_ctx.pid.pitch_pos_pid->calculate(pitch_error,0);
-
-    
-
-//low_pass_filter(pitch_pid_pos_out, &_ctx.data.target_data.pitch_spd, 0.1f);
-
-
-    static float flitter_gravaty_error_angle = -0.40f - _ctx.data.current_data.pitch_pos;
-    float gravaty_error_angle = -0.40f - _ctx.data.current_data.pitch_pos;
-
-    low_pass_filter(gravaty_error_angle, &flitter_gravaty_error_angle, 0.4f);
-
-    // _ctx.data.out_data.pitch_torque=  _ctx.pid.pitch_spd_pid
-    //                     ->calculate(pitch_pid_pos_out*0 + _ctx.cmd->delta_pitch*1000,
-    //                                 _ctx.data.current_data.pitch_spd)
-    //                     -0.6 * cos(flitter_gravaty_error_angle); 
-low_pass_filter(   _ctx.pid.pitch_spd_pid
-                         ->calculate(pitch_pid_pos_out ,
-                                     _ctx.data.current_data.pitch_spd)
-                         -0.64 * cos(flitter_gravaty_error_angle),&_ctx.data.out_data.pitch_torque,0.1f );
-
-
-target_pitch1 = _ctx.data.target_data.pitch_pos;
-
-
-    float yaw_error=loop_fp32_constrain
-                    (_ctx.data.target_data.yaw_pos 
-                -   _ctx.data.imu_data.current_yaw_rad,
-                    -PI,PI);
-
-                    
-
-    //float yaw_pid_pos_out=_ctx.pid.yaw_pos_pid->calculate(yaw_error,0);
-    float yaw_pid_pos_out=_ctx.pid.yaw_pos_pid->calculate( _ctx.cmd->delta_yaw*85 , _ctx.data.current_data.yaw_pos);
-    
-
-    _ctx.data.out_data.yaw_torque=_ctx.pid.yaw_spd_pid
-                        ->calculate(yaw_pid_pos_out,
-                                    _ctx.data.current_data.yaw_spd);
-    #endif
 }
 
-void sentry_gimbal_t::_AI_gimbal_control()
+else if(_ctx.data.imu_ctr_en==true){
+    _IMU_gimbal_control();
+
+}
+}
+
+void sentry_gimbal_t::_IMU_gimbal_control()
 {
     // 目标：自瞄下发的世界系 yaw/pitch（auto_mode 下 cmd->target_* = shoot_*）
-    const float target_world_yaw   = _ctx.data.target_data.yaw_pos;
-    const float target_world_pitch = _ctx.data.target_data.pitch_pos;
+    const float target_world_yaw   = _ctx.data.imu_data.target_yaw_rad;
+    const float target_world_pitch = _ctx.data.imu_data.target_pitch_rad;
 
     // 当前量：IMU 世界系姿态（炮管方向）+ 小云台电机角（相对底盘，已减 offset）
     const float imu_world_yaw   = _ctx.data.imu_data.current_yaw_rad;

@@ -16,6 +16,12 @@
 #include "pyro_aim.h"
 
 
+//  右上————无力模式
+//  右中————手动模式
+
+//  右下（500ms）————自动模式
+
+//自瞄和底盘手动有冲突
 using namespace pyro;
 
 constexpr uint32_t EVENT_BIT_SPINNING = (1 << 0);
@@ -127,6 +133,9 @@ void gimbal_dr162cmd()                                      //_______纯手动�
         gimbal_cmd_ptr->auto_mode = false;
         return;
     }
+
+
+
     gimbal_cmd_ptr->mode              = pyro::cmd_base_t::mode_t::ACTIVE;
     gimbal_cmd_ptr->delta_pitch = -vrc.axes.ry * 0.005f;
     gimbal_cmd_ptr->delta_yaw   =1* (-vrc.axes.rx * 0.008f);
@@ -136,14 +145,14 @@ void gimbal_dr162cmd()                                      //_______纯手动�
 }
 void gimbal_dr16andaim2cmd()                                //  自瞄 + 遥控开关
 {
-    // if(aim_t::get_instance()->check_online() == false)
-    // {
-    //     gimbal_cmd_ptr->aim_mode = 0;
-    //     gimbal_cmd_ptr->target_yaw = 0;
-    //     gimbal_cmd_ptr->target_pitch = 0;
-    //     gimbal_cmd_ptr->auto_mode = false;
-    //     return;
-    // }
+    if(aim_t::get_instance()->check_online() == false)
+    {
+        gimbal_cmd_ptr->aim_mode = 0;
+        gimbal_cmd_ptr->target_yaw = 100;
+        gimbal_cmd_ptr->target_pitch = 100;
+        gimbal_cmd_ptr->auto_mode = false;
+        return;
+    }
 
     aim2gimbal_msg = aim_t::get_instance()->get_rx_msg();
     
@@ -178,13 +187,13 @@ void gimbal_dr16andaim2cmd()                                //  自瞄 + 遥控�
     gimbal_cmd_ptr->auto_mode = true;
 
 //____________________自瞄自主控制_______________________//
-    bool aim_open = false;
-    if(vrc.switches.right.current_pos == pyro::sw_pos_t::DOWN){aim_open = true;}
-    if(aim_open){
-    gimbal_cmd_ptr->aim_mode = aim2gimbal_msg.aim_state;
-    gimbal_cmd_ptr->target_yaw = aim2gimbal_msg.shoot_yaw;
-    gimbal_cmd_ptr->target_pitch = aim2gimbal_msg.shoot_pitch;
-    gimbal_cmd_ptr->auto_mode = true;
+    
+    if(vrc.switches.right.current_pos == pyro::sw_pos_t::DOWN){
+    
+        gimbal_cmd_ptr->aim_mode = aim2gimbal_msg.aim_state;
+        gimbal_cmd_ptr->target_yaw = aim2gimbal_msg.shoot_yaw;
+        gimbal_cmd_ptr->target_pitch = aim2gimbal_msg.shoot_pitch;
+        gimbal_cmd_ptr->auto_mode = true;
 
     }
 
@@ -381,8 +390,16 @@ void gimbal_dr162chassis_cmd(uint32_t notify_value)         // 手动// 右下�
 
     static uint16_t spinning_count = 0;
 
+    #if AUTO_AIM
+        if(pyro::sw_pos_t::DOWN == vrc.switches.right.current_pos){
+            spinning = false;
+            follow_en = true;
+            nav_en = false;
+        }
+
+    #else
     if(pyro::sw_pos_t::DOWN == vrc.switches.right.current_pos){
-        active = 0 ; //————————————————————————————————————————调试自瞄零时加的
+        //active = 0 ; //————————————————————————————————————————调试自瞄零时加的
         if(spinning_count > 1000)
         {
             spinning = true;
@@ -398,6 +415,7 @@ void gimbal_dr162chassis_cmd(uint32_t notify_value)         // 手动// 右下�
         follow_en =  !follow_en;
    
     }
+    #endif
 
 
 
@@ -449,13 +467,24 @@ void sentry_gimbal_thread(void *argument)
 
         
         // 云台接收指令 手动在代码中开关
-        // gimbal_dr162cmd();
-         gimbal_dr16andaim2cmd(); 
+        #if AUTOAIM_MODE
+            gimbal_dr16andaim2cmd(); 
+            gimbal_mcu2aim_data();
+        #else
+            gimbal_dr162cmd();
+        #endif
+
+
         chassis2gimbal_rx();
          //云台转发指令
-        gimbal_dr162chassis_cmd(notify_val);
-        //gimbal_dr16andnav2chassis_cmd(notify_val);
-        gimbal_mcu2aim_data();
+        #if NAV_MODE
+            gimbal_dr16andnav2chassis_cmd(notify_val);
+        #else
+            gimbal_dr162chassis_cmd(notify_val);
+        #endif
+        
+    
+        
         
 
         sentry_gimbal_ptr->set_command(*gimbal_cmd_ptr);

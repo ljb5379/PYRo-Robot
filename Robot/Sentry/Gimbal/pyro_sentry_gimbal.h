@@ -108,6 +108,7 @@ struct sentry_gimbal_deps_t
 
         gimbal_data_t current_data;
         gimbal_data_t target_data;
+        
 
         imu_data_t imu_data;
         out_data_t out_data;
@@ -122,6 +123,8 @@ struct sentry_gimbal_deps_t
     
         float yaw_min_rad;
         float yaw_max_rad;
+
+        bool imu_ctr_en;
     };
     struct sentry_gimbal_context_t
     {
@@ -165,7 +168,7 @@ class sentry_gimbal_t final
    
 
     void _gimbal_control();
-    void _AI_gimbal_control();   // 备用：IMU 世界系 yaw/pitch 反馈 + 机械限幅
+    void _IMU_gimbal_control();   // 备用：IMU 世界系 yaw/pitch 反馈 + 机械限幅
     void _send_motor_command() const;
     //void _communicate_gimbal() const;
     

@@ -11,6 +11,7 @@
 
 #define GIMBAL_AI_IMU_BACKUP 1   // 1 = 启用备用 IMU(世界系) 控制
 
+#define IMUMODE 0 //手动控制是是否使用imu
 #define PITCH_OFFSET_RAD 0.0f;
 #define ROLL_OFFSET_RAD 0.0f;
 
