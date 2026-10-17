@@ -121,8 +121,11 @@ struct sentry_booster_deps_t
         
         #if new_function3_enable
         bool init_finished_flag;  // 拨弹盘初始化完成标志。完成时置1
-        bool is_trigger_ready{true};
+        uint16_t trigger_init_count{0};
+        uint16_t trigger_stall_count{0};
+        uint8_t trigger_stall_time{0};
         float init_trigger_pos{0};
+        bool fric_is_able{0};
         #endif
         
     };
@@ -198,21 +201,14 @@ class sentry_booster_t final
         void on_enter(owner *owner) override;
         void on_execute(owner *owner) override;
         void on_exit(owner *owner) override;
-
-        struct state_stay_t final : public state_t<owner>
+    //单发校准模式，模式1在上力时直接校准，模式2手动触发校准，进校准后校准完才能退出（active中优先级最高）
+        struct state_init_t final : public state_t<owner>
         {
             void enter(owner *owner) override;
             void execute(owner *owner) override;
             void exit(owner *owner) override;
         };
-
-        struct state_wait_t final : public state_t<owner>
-        {
-            void enter(owner *owner) override;
-            void execute(owner *owner) override;
-            void exit(owner *owner) override;
-        };
-
+    //准备完成阶段，校准完或跳过校准，单发连发的前提，在此处可测阻塞
         struct fsm_ready_t final : public fsm_t<owner>
         {
 
@@ -238,18 +234,16 @@ class sentry_booster_t final
             multi_shoot_t _multi_shoot;
 
         };
-
-        struct state_stall_t final : public state_t<owner>
+        struct state_stall_t final : public state_t<owner>//堵转模式
         {
             void enter(owner *owner) override;
             void execute(owner *owner) override;
             void exit(owner *owner) override;
+
         };
-        state_stay_t _state_stay;
-        state_wait_t _state_wait;
-        state_stall_t _state_stall;
-        fsm_ready_t _state_ready;
-        
+        state_init_t state_init;
+        fsm_ready_t state_ready;
+        state_stall_t state_stall;
 
     };
 

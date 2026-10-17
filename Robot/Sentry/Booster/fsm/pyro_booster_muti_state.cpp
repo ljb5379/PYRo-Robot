@@ -11,28 +11,21 @@ void sentry_booster_t::fsm_active_t::fsm_ready_t::multi_shoot_t::enter(owner *ow
 
 void sentry_booster_t::fsm_active_t::fsm_ready_t::multi_shoot_t::execute(owner *owner)
 {
+    //防止摩擦轮没开就发射//可以改成摩擦轮速度达标标志
+    if(owner->_ctx.cmd->fric_on == false ){
+        return;
+    }
+    
     if(owner->_ctx.cmd->multi_shoot == false){
-        request_switch(&owner->_state_active._state_ready._singgle_shoot);
+        request_switch(&owner->_state_active.state_ready._singgle_shoot);
         return;
     }
 
-    if (owner->_ctx.cmd->fire_count <= owner ->_ctx.data.current_fire_count +3)
-    {
-        owner->_ctx.cmd->fire_count+=3;
-    }
+
 
         owner->_trigger_control();
         owner->_send_trig_command();
-    //owner->_ctx.motor.fric_left->send_torque(0);
-    //owner->_ctx.motor.fric_right->send_torque(0);
-    //owner->_ctx.motor.trigger->send_torque(0);
 
-    //owner->_ctx.cmd->fric_target_speed = 0.0f;
-    
-
-
-    
-    //owner->_ctx.motor.trigger
 }
 
 void sentry_booster_t::fsm_active_t::fsm_ready_t::multi_shoot_t::exit(owner *owner)

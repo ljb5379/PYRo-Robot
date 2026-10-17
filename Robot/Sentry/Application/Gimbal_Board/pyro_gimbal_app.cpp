@@ -82,7 +82,7 @@ void deps_init()
     gimbal_deps_ptr->yaw_min_rad       = -0.70f;
 
     gimbal_deps_ptr->pid_deps.yaw_pos_pid = new pyro::pid_t(20.50f, 0.0f, 0.0f,0,10);
-    gimbal_deps_ptr->pid_deps.yaw_spd_pid = new pyro::pid_t(0.13f, 0.0f, 0.0f,0,10.0f);
+    gimbal_deps_ptr->pid_deps.yaw_spd_pid = new pyro::pid_t(0.6f, 0.0f, 0.0f,0,10.0f);
 
     gimbal_deps_ptr->pid_deps.pitch_pos_pid = new pyro::pid_t(30.0f, 0.1f, 0.0f,1.0f,45);
     gimbal_deps_ptr->pid_deps.pitch_spd_pid = new pyro::pid_t(2.0f, 0.2f, 0.00f,3.0f,12);
