@@ -27,6 +27,7 @@ void sentry_booster_t::state_passive_t::execute(owner *owner)
     owner->_ctx.data.target_data.left_spd = 0;
     owner->_ctx.data.target_data.right_spd = 0;
     owner->_fric_control();
+    owner->_send_fric_command();
     #endif
 
     owner->_ctx.motor.trigger->send_torque(0);

@@ -156,7 +156,7 @@ void sentry_gimbal_t::_solve(){
         _ctx.data.imu_data.target_yaw_rad   += _ctx.cmd->delta_yaw;
     }
 #else//不使能自瞄，用电机角度控制
-    #if IMU_MODE==0
+    #if IMUMODE==0
     _ctx.data.imu_ctr_en = false;
     if(_ctx.cmd->delta_pitch<0.00005f && _ctx.cmd->delta_pitch>-0.00005f)
         {_ctx.cmd->delta_pitch=0.0f;}
@@ -182,9 +182,14 @@ void sentry_gimbal_t::_solve(){
     if( _ctx.data.target_data.pitch_pos<_ctx.data.pitch_min_rad)
         { _ctx.data.target_data.pitch_pos=_ctx.data.pitch_min_rad;}
     #endif
-    #if IMU_MODE==1
+    #if IMUMODE==1
+
+        if(_ctx.cmd->delta_pitch<0.00005f && _ctx.cmd->delta_pitch>-0.00005f)
+            {_ctx.cmd->delta_pitch=0.0f;}
+        if(_ctx.cmd->delta_yaw<0.00005f && _ctx.cmd->delta_yaw>-0.00005f)
+            {_ctx.cmd->delta_yaw=0.0f;}
         _ctx.data.imu_ctr_en = true;
-        _ctx.data.imu_data.target_pitch_rad += _ctx.cmd->delta_pitch;
+        _ctx.data.imu_data.target_pitch_rad -= _ctx.cmd->delta_pitch;
         
         _ctx.data.imu_data.target_yaw_rad   += _ctx.cmd->delta_yaw;
 
@@ -281,9 +286,14 @@ target_pitch1 = motor_pitch;
     // --- 俯仰：期望电机角 = 世界目标 − 底盘坡度，夹机械限幅 ---
     float desired_motor_pitch = -(target_world_pitch - imu_world_pitch)/5 + motor_pitch;
 
-    if(desired_motor_pitch > _ctx.data.pitch_max_rad) desired_motor_pitch = _ctx.data.pitch_max_rad;
-    if(desired_motor_pitch < _ctx.data.pitch_min_rad) desired_motor_pitch = _ctx.data.pitch_min_rad;
-
+    if(desired_motor_pitch > _ctx.data.pitch_max_rad){
+        desired_motor_pitch = _ctx.data.pitch_max_rad;
+        _ctx.data.imu_data.target_pitch_rad = _ctx.data.imu_data.current_pitch_rad;
+    }
+    if(desired_motor_pitch < _ctx.data.pitch_min_rad){
+         desired_motor_pitch = _ctx.data.pitch_min_rad;
+        _ctx.data.imu_data.target_pitch_rad = _ctx.data.imu_data.current_pitch_rad;
+    }
 
 
 
@@ -315,7 +325,7 @@ target_pitch1 = motor_pitch;
         yaw_pos_out, _ctx.data.current_data.yaw_spd);
 
 
-    //将限幅值返回目标值，防止某些情况 小yaw目标值一直处在限幅外，显得比较怪异 pitch暂时不管
+    //将限幅值返回目标值，防止某些情况 小yaw目标值一直处在限幅外，
     _ctx.data.imu_data.target_yaw_rad = desired_motor_yaw + gimbal_yaw;
 }
 

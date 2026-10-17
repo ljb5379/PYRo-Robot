@@ -15,6 +15,7 @@ void sentry_gimbal_t::state_active_t::enter(owner *owner)
         pitch_motor->clear_error();
     }
     owner->_ctx.motor.motor_pitch->enable();
+    owner->_ctx.data.target_data.pitch_pos = owner->_ctx.data.current_data.pitch_pos;
 }
 
 void sentry_gimbal_t::state_active_t::execute(owner *owner)

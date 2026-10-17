@@ -28,7 +28,7 @@ using namespace pyro;
 
 
 
-//1.校准    上力后第一次左上？//开摩擦润前左上往左下              //自瞄模式上力就校准  //阻塞，除下力外其他操作都无效
+//1.校准    上力后第一次开摩擦润前左上往左下              //自瞄模式上力就校准  //阻塞，除下力外其他操作都无效
 //单发前先判断是否校准，多发不用判断，但连发后主动校准到单发位置（先将校准标志位清零，连发结束）  无论自瞄或手控，
 
 //2.单发    左上往左中开摩擦轮，左下往      //自瞄模式发is_single_shoot=1, aim2booster_msg.fire为1时 发1发弹，若在校准没用
@@ -131,7 +131,8 @@ void booster_dr162cmd(uint32_t notify_value)
             #if new_function3_enable
                 booster_cmd_ptr->start_trigger_init     = true;//摩擦轮在init结束开
             #else
-                booster_cmd_ptr->fric_on                =  !booster_cmd_ptr->fric_on;
+                booster_cmd_ptr->fric_on                = !booster_cmd_ptr->fric_on;
+                
             #endif
         }
 
@@ -141,7 +142,7 @@ void booster_dr162cmd(uint32_t notify_value)
                     booster_cmd_ptr->start_trigger_init     = false;
                 }
             #else
-                booster_cmd_ptr->fric_on                =  !booster_cmd_ptr->fric_on;
+                
             #endif
         
 
@@ -265,7 +266,11 @@ void booster_dr16andaim2cmd(uint32_t notify_value){
             // booster_dr162chassis_cmd();
             
             chassis2booster_rx();
+            #if AUTOAIM_MODE ==1
             booster_dr16andaim2cmd(notify_val);
+            #elif AUTOAIM_MODE ==0
+            booster_dr162cmd(notify_val);
+            #endif
             sentry_booster_ptr->set_command(*booster_cmd_ptr);
             vTaskDelay(1);
         }

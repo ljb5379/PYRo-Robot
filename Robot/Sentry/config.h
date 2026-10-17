@@ -15,11 +15,11 @@
 
 //调试时使用，开关自瞄和导航。暂时不同时开
 #define AUTOAIM_MODE 0
-#define NAV_MODE 1
+#define NAV_MODE 0
 
-#define s_yaw_enable 0 //小yaw是否能操控
+#define s_yaw_enable 1 //小yaw是否能操控
 
-#define new_function3_enable 1
+#define new_function3_enable 0
 
 #define rad 40
 #endif
