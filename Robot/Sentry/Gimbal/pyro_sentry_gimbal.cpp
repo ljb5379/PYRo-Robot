@@ -165,17 +165,30 @@ void sentry_gimbal_t::_solve(){
 
 
     _ctx.data.target_data.pitch_pos  += _ctx.cmd->delta_pitch;
-    _ctx.data.target_data.yaw_pos    += _ctx.cmd->delta_yaw;
+    #if s_yaw_enable==1
+        _ctx.data.target_data.yaw_pos    += _ctx.cmd->delta_yaw;
+    #endif
+        #if s_yaw_enable==0
+        _ctx.data.imu_data.target_yaw_rad   = 0;
+        #endif
+    
 
     if( _ctx.data.target_data.yaw_pos>_ctx.data.yaw_max_rad)
         { _ctx.data.target_data.yaw_pos=_ctx.data.yaw_max_rad;}
     if( _ctx.data.target_data.yaw_pos<_ctx.data.yaw_min_rad)
         { _ctx.data.target_data.yaw_pos=_ctx.data.yaw_min_rad;}
+    if( _ctx.data.target_data.pitch_pos>_ctx.data.pitch_max_rad)
+        { _ctx.data.target_data.pitch_pos=_ctx.data.pitch_max_rad;}
+    if( _ctx.data.target_data.pitch_pos<_ctx.data.pitch_min_rad)
+        { _ctx.data.target_data.pitch_pos=_ctx.data.pitch_min_rad;}
     #endif
     #if IMU_MODE==1
         _ctx.data.imu_ctr_en = true;
         _ctx.data.imu_data.target_pitch_rad += _ctx.cmd->delta_pitch;
+        
         _ctx.data.imu_data.target_yaw_rad   += _ctx.cmd->delta_yaw;
+
+
     #endif
 #endif
 
@@ -271,6 +284,9 @@ target_pitch1 = motor_pitch;
     if(desired_motor_pitch > _ctx.data.pitch_max_rad) desired_motor_pitch = _ctx.data.pitch_max_rad;
     if(desired_motor_pitch < _ctx.data.pitch_min_rad) desired_motor_pitch = _ctx.data.pitch_min_rad;
 
+
+
+
     float pitch_error = desired_motor_pitch - motor_pitch;   // 限幅内 == 
     float pitch_pos_out = _ctx.pid.pitch_pos_pid->calculate(pitch_error, 0);
         
@@ -297,6 +313,10 @@ target_pitch1 = motor_pitch;
     float yaw_pos_out = _ctx.pid.yaw_pos_pid->calculate(yaw_error, 0);
     _ctx.data.out_data.yaw_torque = _ctx.pid.yaw_spd_pid->calculate(
         yaw_pos_out, _ctx.data.current_data.yaw_spd);
+
+
+    //将限幅值返回目标值，防止某些情况 小yaw目标值一直处在限幅外，显得比较怪异 pitch暂时不管
+    _ctx.data.imu_data.target_yaw_rad = desired_motor_yaw + gimbal_yaw;
 }
 
 void sentry_gimbal_t::_send_motor_command() const{

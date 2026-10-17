@@ -10,7 +10,7 @@
 
 #include "pyro_ins.h"
 #include "pyro_dm_motor_drv.h"
-
+#include "config.h"
 
 
 namespace pyro
@@ -28,13 +28,16 @@ struct sentry_booster_cmd_t: public cmd_base_t
     bool multi_shoot;
 
     float shoot_speed;
+
+    bool start_trigger_init;
+
     uint8_t data1;
     uint8_t data2;
     
     // float imu_yaw;
     // float imu_pitch;
         sentry_booster_cmd_t()
-        :fric_on(false), fire_count(0), /*trig_target_spd(0.0f),*/real_hit_speed(0.0f),multi_shoot(false)
+        :fric_on(false), fire_count(0), /*trig_target_spd(0.0f),*/real_hit_speed(0.0f),multi_shoot(false),start_trigger_init(false)
     {
     }
 
@@ -75,6 +78,7 @@ struct sentry_booster_deps_t
         float trigger_pos{0};
         int32_t trigger_count{0};
         float trigger_equal_pos{0};
+        float trigger_equal_spd{0};
     };
 
     // struct imu_data_t
@@ -113,7 +117,14 @@ struct sentry_booster_deps_t
         uint16_t current_fire_count{0};
         bool singgle_shoot;
         uint8_t error_count{0};
-
+        
+        
+        #if new_function3_enable
+        bool init_finished_flag;  // 拨弹盘初始化完成标志。完成时置1
+        bool is_trigger_ready{true};
+        float init_trigger_pos{0};
+        #endif
+        
     };
     struct sentry_booster_context_t
     {

@@ -125,6 +125,7 @@ struct sentry_gimbal_deps_t
         float yaw_max_rad;
 
         bool imu_ctr_en;
+
     };
     struct sentry_gimbal_context_t
     {

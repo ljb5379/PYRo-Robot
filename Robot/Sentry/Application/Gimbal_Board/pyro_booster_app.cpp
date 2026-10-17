@@ -16,10 +16,30 @@
 #include "pyro_board_comm.h"
 using namespace pyro;
 
+//已处理 
+//1. trigger角度获取优化（待验证/function1_enable宏定义开关/ 反馈还使用没算减速比的速度）
+//2. 摩擦轮下力时刹车
+//3. 
+
+//右上下力
+//右中手动
+//右下自动
+//上电后左摇杆初始放左中
+
+
+
+//1.校准    上力后第一次左上？//开摩擦润前左上往左下              //自瞄模式上力就校准  //阻塞，除下力外其他操作都无效
+//单发前先判断是否校准，多发不用判断，但连发后主动校准到单发位置（先将校准标志位清零，连发结束）  无论自瞄或手控，
+
+//2.单发    左上往左中开摩擦轮，左下往      //自瞄模式发is_single_shoot=1, aim2booster_msg.fire为1时 发1发弹，若在校准没用
+//          左中单发，若没校准则没用        
+//3.多发    左下600ms                     //自瞄模式 is_single_shoot=0, aim2booster_msg.fire为1时 发多发弹，若在校准没用       booster_cmd_ptr->multi_shoot从0到1变化时校准标志位重置     
+
 // 定义任务通知的位掩码 (Event Bits)
 constexpr uint32_t EVENT_BIT_FRIC_ON = (1 << 0);
 constexpr uint32_t EVENT_BIT_SINGGLE_SHOOT   = (1 << 1);
 constexpr uint32_t EVENT_BIT_FIRE = (1 << 2); 
+constexpr uint32_t EVENT_BIT_FRIC_OFF = (1 << 3); 
 
 static TaskHandle_t booster_task_handle                          = nullptr;
 static pyro::sentry_booster_t *sentry_booster_ptr                = nullptr;
@@ -97,23 +117,46 @@ void booster_dr162cmd(uint32_t notify_value)
         booster_cmd_ptr->fire_count   = 0;
         booster_cmd_ptr->real_hit_speed   = 0;
         booster_cmd_ptr->multi_shoot   =  0;
+        booster_cmd_ptr->start_trigger_init = 0;
         
         return;
     }
     
     else{
         booster_cmd_ptr->mode              = pyro::cmd_base_t::mode_t::ACTIVE;
-        ;
-        if(notify_value & EVENT_BIT_FRIC_ON)
-        {   
-            booster_cmd_ptr->fric_on                =  !booster_cmd_ptr->fric_on;
-            
-
-           //booster_cmd_ptr->trig_target_spd        =  BOOSTER_SHOOT_TRIG_SPEED;
-
-        }
-        booster_cmd_ptr->multi_shoot        =  0;
         
+
+        if(notify_value & EVENT_BIT_FRIC_ON)
+        {   //booster_cmd_ptr->start_trigger_init = false; //初始化事件 标志位
+            #if new_function3_enable
+                booster_cmd_ptr->start_trigger_init     = true;//摩擦轮在init结束开
+            #else
+                booster_cmd_ptr->fric_on                =  !booster_cmd_ptr->fric_on;
+            #endif
+        }
+
+            #if new_function3_enable
+                if(sentry_booster_ptr->get_ctx().data.init_finished_flag == 1){  //在下层 发现上层读取后主动将
+                    booster_cmd_ptr->fric_on                =  true;
+                    booster_cmd_ptr->start_trigger_init     = false;
+                }
+            #else
+                booster_cmd_ptr->fric_on                =  !booster_cmd_ptr->fric_on;
+            #endif
+        
+
+        
+        
+#if new_function3_enable
+    if(notify_value & EVENT_BIT_FRIC_OFF)
+        {   //booster_cmd_ptr->start_trigger_init = false; //初始化事件 标志位
+            
+                booster_cmd_ptr->fric_on     = false;//摩擦轮在init结束开
+            
+        }   
+#endif     
+
+        booster_cmd_ptr->multi_shoot        =  0;//默认单发
     if(booster_cmd_ptr->fric_on){
         if(pyro::sw_pos_t::DOWN == vrc.switches.left.current_pos){
             
@@ -252,6 +295,8 @@ void booster_dr16andaim2cmd(uint32_t notify_value){
         pyro::sw_broker::subscribe(&vrc.switches.left, pyro::sw_event_t::UP_TO_MID, booster_task_handle, EVENT_BIT_FRIC_ON);
         pyro::sw_broker::subscribe(&vrc.switches.left, pyro::sw_event_t::DOWN_TO_MID, booster_task_handle, EVENT_BIT_SINGGLE_SHOOT);
         pyro::sw_broker::subscribe(&vrc.switches.left, pyro::sw_event_t::MID_TO_DOWN, booster_task_handle, EVENT_BIT_FIRE);
+        pyro::sw_broker::subscribe(&vrc.switches.left, pyro::sw_event_t::MID_TO_UP, booster_task_handle, EVENT_BIT_FRIC_OFF);
+
 
         vTaskDelete(nullptr);
     }

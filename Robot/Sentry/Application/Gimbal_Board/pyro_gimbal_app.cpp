@@ -178,8 +178,8 @@ void gimbal_dr16andaim2cmd()                                //  自瞄 + 遥控�
     if(pyro::sw_pos_t::MID == vrc.switches.right.current_pos)
     {
         
-        gimbal_cmd_ptr->delta_pitch = vrc.axes.ry * 0.005f;
-        gimbal_cmd_ptr->delta_yaw   = 1* (-vrc.axes.rx * 0.008f);
+        gimbal_cmd_ptr->delta_pitch = vrc.axes.ry * 0.004f;
+        gimbal_cmd_ptr->delta_yaw   = 1* (-vrc.axes.rx * 0.006f);
         gimbal_cmd_ptr->auto_mode = false;
         return;
 

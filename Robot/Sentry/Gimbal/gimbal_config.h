@@ -1,7 +1,7 @@
 #ifndef GIMBAL_CONFIG_H
 #define GIMBAL_CONFIG_H
 
-
+#include "config.h"
 
 #define GIMBAL_PITCH_OFFSET_RAD 0.0f;
 

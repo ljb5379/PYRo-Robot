@@ -60,7 +60,8 @@ namespace pyro{
         _ctx.data.current_data.trigger_pos=
                     _ctx.motor.trigger->get_current_position();
 
-        //正转
+    #if new_function1_enable == 0
+                
         float error_angle =  _ctx.data.current_data.trigger_pos - last_position;
         if(_ctx.data.current_data.trigger_spd > 1.0f && last_rotate > 1.0f){
             
@@ -115,10 +116,18 @@ namespace pyro{
        pos2 = _ctx.data.target_data.trigger_equal_pos;
     count1 = _ctx.data.current_data.trigger_count;
     error_count1 = _ctx.data.error_count;
-    //---暂不滤波---
-    // _ctx.imu_data.current_pitch_rad = raw_pitch;
-    // _ctx.imu_data.current_roll_rad  = raw_roll;    
-    // _ctx.imu_data.current_yaw_rad = raw_yaw;
+
+    #elif new_function1_enable == 1
+
+        //获取处理后角度 rad
+        float _error_angle =  loop_fp32_constrain(_ctx.data.current_data.trigger_pos - last_position,-PI, PI);
+        _ctx.data.current_data.trigger_equal_pos  += _error_angle / BOOSTER_TRIGGER_RATE;
+        _ctx.data.current_data.trigger_equal_pos = loop_fp32_constrain(_ctx.data.current_data.trigger_equal_pos,-PI, PI);
+        last_position = _ctx.data.current_data.trigger_pos;
+
+        //获取处理后角速度rad/s
+        _ctx.data.current_data.trigger_spd = _ctx.data.current_data.trigger_spd / BOOSTER_TRIGGER_RATE;  
+    #endif
     }
 
 // void sentry_booster_t::_solve(){
@@ -133,6 +142,8 @@ namespace pyro{
 // }
 
 void sentry_booster_t::_fric_control(){
+#if new_function2_enable == 0
+
     if(_ctx.cmd->fric_on){
         static bool first_time = true;
         static float fric_spd = BOOSTER_SHOOT_FRIC_LINE_V;
@@ -159,11 +170,6 @@ void sentry_booster_t::_fric_control(){
                 fric_spd = BOOSTER_SHOOT_FRIC_LINE_V*0.7f;
             }
             else{}
-
-
-
-
-            
         }
             _ctx.data.target_data.left_spd =       fric_spd/BOOSTER_FRIC_R;
             _ctx.data.target_data.right_spd =    - fric_spd/BOOSTER_FRIC_R ;
@@ -190,6 +196,60 @@ void sentry_booster_t::_fric_control(){
     //     _ctx.out_data.r_fric_torque=0.0f;
 
     // }
+    #elif new_function2_enable == 1
+    
+    if(_ctx.cmd->fric_on){
+    
+        static float fric_spd = BOOSTER_SHOOT_FRIC_LINE_V;
+            
+        // _ctx.data.target_data.left_spd =       BOOSTER_SHOOT_FRIC_RADPS;//有裁判系统后速度换成计算值
+        // _ctx.data.target_data.right_spd =    - BOOSTER_SHOOT_FRIC_RADPS;
+        if(_ctx.cmd->shoot_speed>1e-5){
+            if(_ctx.cmd->shoot_speed>BOOSTER_SHOOT_MAX_SPEED){
+                // _ctx.data.target_data.left_spd -= BOOSTER_SHOOT_DELTA_V;
+                // _ctx.data.target_data.right_spd += BOOSTER_SHOOT_DELTA_V;
+                fric_spd -= BOOSTER_SHOOT_DELTA_V;
+            }
+            else if(_ctx.cmd->shoot_speed<BOOSTER_SHOOT_MIN_SPEED){
+                // _ctx.data.target_data.left_spd += BOOSTER_SHOOT_DELTA_V;
+                // _ctx.data.target_data.right_spd -= BOOSTER_SHOOT_DELTA_V;
+                fric_spd += BOOSTER_SHOOT_DELTA_V;
+            }
+            else{}
+
+            if(fric_spd>BOOSTER_SHOOT_FRIC_LINE_V*1.3f){
+                fric_spd = BOOSTER_SHOOT_FRIC_LINE_V*1.3f;
+            }
+            else if(fric_spd<BOOSTER_SHOOT_FRIC_LINE_V*0.7f){
+                fric_spd = BOOSTER_SHOOT_FRIC_LINE_V*0.7f;
+            }
+            else{}
+        }
+            _ctx.data.target_data.left_spd =       fric_spd/BOOSTER_FRIC_R;
+            _ctx.data.target_data.right_spd =    - fric_spd/BOOSTER_FRIC_R ;
+    }
+    else{
+        _ctx.data.target_data.left_spd   =       0.0f;//有裁判系统后速度换成计算值
+        _ctx.data.target_data.right_spd  =       0.0f;
+    }
+    // _ctx.target_data.left_spd=_ctx.cmd->fric_target_speed;
+    // _ctx.target_data.right_spd=-_ctx.cmd->fric_target_speed;
+    
+    
+    _ctx.data.out_data.l_fric_torque=_ctx.pid.l_fric_pid
+                        ->calculate(_ctx.data.target_data.left_spd,
+                                    _ctx.data.current_data.left_spd);
+    _ctx.data.out_data.r_fric_torque=_ctx.pid.r_fric_pid
+                        ->calculate(_ctx.data.target_data.right_spd,
+                                    _ctx.data.current_data.right_spd);
+
+    //在下力时先刹车而不是随惯性转
+    if(fabs(_ctx.data.target_data.left_spd)<1e-5 && fabs(_ctx.data.current_data.left_spd)<1e-5)
+        _ctx.data.out_data.l_fric_torque=0.0f;
+    if(fabs(_ctx.data.target_data.right_spd)<1e-5 && fabs(_ctx.data.current_data.right_spd)<1e-5)
+        _ctx.data.out_data.r_fric_torque=0.0f;                            
+
+    #endif
     
 }
 
@@ -198,15 +258,44 @@ void sentry_booster_t::_trigger_control(){
 
     lspd =  _ctx.cmd->fire_count;
     rspd =  _ctx.data.current_fire_count;
-    
+#if new_function3_enable == 0
+
+#elif new_function3_enable == 1
+
+    if(_ctx.cmd->start_trigger_init == true){
+        static uint16_t trigger_init_count = 0;
+        float trigger_init_speed = BOOSTER_TRIGGER_INIT_SPEED*BOOSTER_TRIGGER_RATE*BOOSTER_ONE_SHOOT_ANGLE;//以2颗/s 装弹
+        _ctx.data.out_data.trigger_torque = _ctx.pid.trig_pos_pid
+                        ->calculate(trigger_init_speed,
+                                    _ctx.data.current_data.trigger_spd);   //接在sendtouque前
+
+        if(_ctx.data.current_data.trigger_spd <= BOOSTER_TRIGGER_PLUG_SPEED){
+            trigger_init_count++;
+            if(trigger_init_count >= BOOSTER_TRIGGER_INIT_COUNT){
+
+                _ctx.data.init_trigger_pos = _ctx.data.current_data.trigger_equal_pos - 0.05f; //单发校准点位
+                _ctx.data.target_data.trigger_equal_pos = _ctx.data.init_trigger_pos;
+                _ctx.data.init_finished_flag = 1 ; //初始化事件完成标志 
+            }
+        }
+        else{
+            trigger_init_count==0;
+        }
+
+        return;
+    }
+    else{              //若初始化完成 app层读取完成后init指令表示读取flag 完成，
+         _ctx.data.init_finished_flag = 0;
+    }
+#endif
 
 if(_ctx.cmd->fric_on){
 
     if(_ctx.cmd->multi_shoot == true){
         float distance =loop_fp32_constrain(_ctx.data.target_data.trigger_equal_pos - _ctx.data.current_data.trigger_equal_pos, -PI,PI) ;
         
-         if(distance <PI/2){
-        _ctx.data.target_data.trigger_equal_pos += PI/4;
+         if(distance < 0){
+        _ctx.data.target_data.trigger_equal_pos += PI/4; //连发时更新目标值，保证退出时单发在特定位置
         }
     }    
     else if(_ctx.cmd->fire_count  >  _ctx.data.current_fire_count){
@@ -225,7 +314,7 @@ if(_ctx.cmd->fric_on){
 
     if(_ctx.cmd->fric_on && _ctx.cmd->multi_shoot == true){
 
-        out_trigger_spd = 12*BOOSTER_TRIGGER_RATE*BOOSTER_ONE_SHOOT_ANGLE;
+        out_trigger_spd = BOOSTER_SHOOT_TRIG_SPEED*BOOSTER_TRIGGER_RATE*BOOSTER_ONE_SHOOT_ANGLE;
 
     }
     _ctx.data.out_data.trigger_torque= _ctx.pid.trig_spd_pid
