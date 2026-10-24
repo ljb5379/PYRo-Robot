@@ -16,10 +16,10 @@ void sentry_booster_t::fsm_active_t::fsm_ready_t::multi_shoot_t::execute(owner *
         return;
     }
 
-    if (owner->_ctx.cmd->fire_count <= owner ->_ctx.data.current_fire_count +3)
-    {
-        owner->_ctx.cmd->fire_count+=3;
-    }
+    // if (owner->_ctx.cmd->fire_count <= owner ->_ctx.data.current_fire_count +3)
+    // {
+    //     owner->_ctx.cmd->fire_count+=3;
+    // }
 
         owner->_trigger_control();
         owner->_send_trig_command();

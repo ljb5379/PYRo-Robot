@@ -126,7 +126,7 @@ namespace pyro{
         last_position = _ctx.data.current_data.trigger_pos;
 
         //获取处理后角速度rad/s
-        _ctx.data.current_data.trigger_spd = _ctx.data.current_data.trigger_spd / BOOSTER_TRIGGER_RATE;  
+        _ctx.data.current_data.trigger_equal_spd = _ctx.data.current_data.trigger_spd / BOOSTER_TRIGGER_RATE;  
     #endif
     }
 
@@ -256,45 +256,15 @@ void sentry_booster_t::_fric_control(){
 void sentry_booster_t::_trigger_control(){
 
 
-    lspd =  _ctx.cmd->fire_count;
-    rspd =  _ctx.data.current_fire_count;
-#if new_function3_enable == 0
 
-#elif new_function3_enable == 1
 
-    if(_ctx.cmd->start_trigger_init == true){
-        static uint16_t trigger_init_count = 0;
-        float trigger_init_speed = BOOSTER_TRIGGER_INIT_SPEED*BOOSTER_TRIGGER_RATE*BOOSTER_ONE_SHOOT_ANGLE;//以2颗/s 装弹
-        _ctx.data.out_data.trigger_torque = _ctx.pid.trig_pos_pid
-                        ->calculate(trigger_init_speed,
-                                    _ctx.data.current_data.trigger_spd);   //接在sendtouque前
-
-        if(_ctx.data.current_data.trigger_spd <= BOOSTER_TRIGGER_PLUG_SPEED){
-            trigger_init_count++;
-            if(trigger_init_count >= BOOSTER_TRIGGER_INIT_COUNT){
-
-                _ctx.data.init_trigger_pos = _ctx.data.current_data.trigger_equal_pos - 0.05f; //单发校准点位
-                _ctx.data.target_data.trigger_equal_pos = _ctx.data.init_trigger_pos;
-                _ctx.data.init_finished_flag = 1 ; //初始化事件完成标志 
-            }
-        }
-        else{
-            trigger_init_count==0;
-        }
-
-        return;
-    }
-    else{              //若初始化完成 app层读取完成后init指令表示读取flag 完成，
-         _ctx.data.init_finished_flag = 0;
-    }
-#endif
 
 if(_ctx.cmd->fric_on){
 
     if(_ctx.cmd->multi_shoot == true){
         float distance =loop_fp32_constrain(_ctx.data.target_data.trigger_equal_pos - _ctx.data.current_data.trigger_equal_pos, -PI,PI) ;
         
-         if(distance < 0){
+         if(distance < PI/4){
         _ctx.data.target_data.trigger_equal_pos += PI/4; //连发时更新目标值，保证退出时单发在特定位置
         }
     }    

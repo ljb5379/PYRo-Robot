@@ -35,13 +35,11 @@ if (BOARD STREQUAL "GIMBAL_BOARD")
             Booster/fsm/pyro_booster_active_state.cpp
             Booster/fsm/pyro_booster_passive_state.cpp
 
-            Booster/fsm/pyro_booster_wait_state.cpp
             Booster/fsm/pyro_booster_ready_state.cpp
             Booster/fsm/pyro_booster_singgle_state.cpp
             Booster/fsm/pyro_booster_muti_state.cpp
             Booster/fsm/pyro_booster_stall_state.cpp
-            Booster/fsm/pyro_booster_stay_state.cpp
-
+            Booster/fsm/pyro_booster_init_state.cpp
             # === Communication ===
             #Communication/Gimbal_board/pyro_autoaim_drv.cpp
             #Communication/Gimbal_board/pyro_autoaim_com.cpp

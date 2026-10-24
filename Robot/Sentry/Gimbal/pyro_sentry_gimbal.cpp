@@ -10,14 +10,7 @@
 
 
 #define JCOM_DEBUG_PORT PYRO_UART1
-float target_pitch1;
-float target_pitch2;
-float current_pitch1;
-
-float pitchspdtarget;
-float pitchspdcurrent;
-
-float yaw111,pitch111,roll111;
+float yaw_imu,yaw_motor,yaw_1,yaw_2;
 
 //float
 
@@ -94,43 +87,41 @@ namespace pyro{
     // raw_roll  -= ROLL_OFFSET_RAD;
 
 
-    // --- 一阶低通滤波 (LPF) ---
-    // 为了快速验证，这里使用 static 变量保存上一次的滤波状态
-    // 如果确认有效，建议将它们移到 _ctx.data 结构体中
-    static float filtered_pitch = 0.0f;
-    static float filtered_roll  = 0.0f;
-    static float filtered_yaw   = 0.0f;
-    static bool  is_first_run   = true;
+    // // --- 一阶低通滤波 (LPF) ---
+    // // 为了快速验证，这里使用 static 变量保存上一次的滤波状态
+    // // 如果确认有效，建议将它们移到 _ctx.data 结构体中
+    // static float filtered_pitch = 0.0f;
+    // static float filtered_roll  = 0.0f;
+    // static float filtered_yaw   = 0.0f;
+    // static bool  is_first_run   = true;
 
-    // 滤波系数 alpha：(0, 1]
-    // alpha = 1.0 表示完全不滤波；alpha 越小，抗噪声能力越强，但相位延迟越大。
-    // 对于 500Hz~1000Hz 的控制循环，0.1f ~ 0.3f 通常是一个比较理想的甜点值。
-    const float LPF_ALPHA = 0.15f;
+    // // 滤波系数 alpha：(0, 1]
+    // // alpha = 1.0 表示完全不滤波；alpha 越小，抗噪声能力越强，但相位延迟越大。
+    // // 对于 500Hz~1000Hz 的控制循环，0.1f ~ 0.3f 通常是一个比较理想的甜点值。
+    // const float LPF_ALPHA = 0.15f;
 
-    if (is_first_run)
-    {
-        filtered_pitch = raw_pitch;
-        filtered_roll  = raw_roll;
-        filtered_yaw   = raw_yaw;
-        is_first_run   = false;
-    }
-    else
-    {
-        low_pass_filter(raw_pitch, &filtered_pitch, LPF_ALPHA);
-        low_pass_filter(raw_roll,  &filtered_roll,  LPF_ALPHA);
-        low_pass_filter(raw_yaw,   &filtered_yaw,   LPF_ALPHA);
-    }
-    _ctx.data.imu_data.current_pitch_rad = filtered_pitch;
-    _ctx.data.imu_data.current_roll_rad  = filtered_roll;    
-    _ctx.data.imu_data.current_yaw_rad = filtered_yaw;
+    // if (is_first_run)
+    // {
+    //     filtered_pitch = raw_pitch;
+    //     filtered_roll  = raw_roll;
+    //     filtered_yaw   = raw_yaw;
+    //     is_first_run   = false;
+    // }
+    // else
+    // {
+    //     low_pass_filter(raw_pitch, &filtered_pitch, LPF_ALPHA);
+    //     low_pass_filter(raw_roll,  &filtered_roll,  LPF_ALPHA);
+    //     low_pass_filter(raw_yaw,   &filtered_yaw,   LPF_ALPHA);
+    // }
+    // _ctx.data.imu_data.current_pitch_rad = filtered_pitch;
+    // _ctx.data.imu_data.current_roll_rad  = filtered_roll;    
+    // _ctx.data.imu_data.current_yaw_rad = filtered_yaw;
     
-    pitch111 = filtered_pitch;
-    yaw111 = filtered_yaw;
-    roll111 = filtered_roll;
+
     //---暂不滤波---
-    // _ctx.imu_data.current_pitch_rad = raw_pitch;
-    // _ctx.imu_data.current_roll_rad  = raw_roll;    
-    // _ctx.imu_data.current_yaw_rad = raw_yaw;
+    _ctx.data.imu_data.current_pitch_rad = raw_pitch;
+    _ctx.data.imu_data.current_roll_rad  = raw_roll;    
+    _ctx.data.imu_data.current_yaw_rad = raw_yaw;
     }
 
 void sentry_gimbal_t::_solve(){
@@ -140,20 +131,34 @@ void sentry_gimbal_t::_solve(){
 //先对模式进行判断 若自瞄模式则为给定数值，若手动控制则为增量，若给超出范围值则保持旧值
 
     _ctx.data.imu_ctr_en = true;
-    if(_ctx.cmd->auto_mode == true&& fabs(_ctx.cmd->target_pitch)<50.0f && fabs(_ctx.cmd->yaw) <50.0f)
+    if(_ctx.cmd->auto_mode == true&& fabs(_ctx.cmd->target_pitch)<50.0f && fabs(_ctx.cmd->target_yaw) <50.0f)
     {
        _ctx.data.imu_data.target_pitch_rad = _ctx.cmd->target_pitch;
        _ctx.data.imu_data.target_yaw_rad = _ctx.cmd->target_yaw;
 
     }
-    else if(fabs(_ctx.cmd->target_pitch)>50.0f || fabs(_ctx.cmd->yaw) >50.0f) {
-        _ctx.data.imu_data.target_pitch_rad = _ctx.data.current_data.pitch_pos;
-        _ctx.data.imu_data.target_yaw_rad   = _ctx.data.current_data.yaw_pos;
+    else if(_ctx.cmd->auto_mode == true && fabs(_ctx.cmd->target_pitch)>50.0f || fabs(_ctx.cmd->target_yaw) >50.0f) {
+        _ctx.data.imu_data.target_pitch_rad = _ctx.data.imu_data.current_pitch_rad;
+        _ctx.data.imu_data.target_yaw_rad   = _ctx.data.imu_data.current_yaw_rad;
             return;
     }
     else {
-        _ctx.data.imu_data.target_pitch_rad += _ctx.cmd->delta_pitch;
+if(_ctx.cmd->small_yaw_mode==1){
+
+        if(_ctx.cmd->delta_pitch<0.00005f && _ctx.cmd->delta_pitch>-0.00005f)
+            {_ctx.cmd->delta_pitch=0.0f;}
+        if(_ctx.cmd->delta_yaw<0.00005f && _ctx.cmd->delta_yaw>-0.00005f)
+            {_ctx.cmd->delta_yaw=0.0f;}
+        _ctx.data.imu_ctr_en = true;
+        _ctx.data.imu_data.target_pitch_rad -= _ctx.cmd->delta_pitch;
+        
         _ctx.data.imu_data.target_yaw_rad   += _ctx.cmd->delta_yaw;
+}
+else{
+    _ctx.data.imu_ctr_en = false;
+    _ctx.data.target_data.yaw_pos = 0;
+     _ctx.data.target_data.pitch_pos  += _ctx.cmd->delta_pitch * 0.5f;
+}
     }
 #else//不使能自瞄，用电机角度控制
     #if IMUMODE==0
@@ -164,12 +169,12 @@ void sentry_gimbal_t::_solve(){
         {_ctx.cmd->delta_yaw=0.0f;}
 
 
-    _ctx.data.target_data.pitch_pos  += _ctx.cmd->delta_pitch;
+    _ctx.data.target_data.pitch_pos  += _ctx.cmd->delta_pitch * 0.5f;
     #if s_yaw_enable==1
-        _ctx.data.target_data.yaw_pos    += _ctx.cmd->delta_yaw;
+        _ctx.data.target_data.yaw_pos    += _ctx.cmd->delta_yaw * 0.5f;
     #endif
         #if s_yaw_enable==0
-        _ctx.data.imu_data.target_yaw_rad   = 0;
+        _ctx.data.target_data.yaw_pos   = 0;
         #endif
     
 
@@ -236,12 +241,6 @@ low_pass_filter(   _ctx.pid.pitch_spd_pid
                          -0.64 * cos(flitter_gravaty_error_angle),&_ctx.data.out_data.pitch_torque,0.1f );
 
 
-target_pitch1 = _ctx.data.target_data.pitch_pos;
-target_pitch2 =-0.4f - flitter_gravaty_error_angle;
-current_pitch1 = _ctx.data.current_data.pitch_pos;
-                    
-pitchspdtarget =  pitch_pid_pos_out;
-pitchspdcurrent = _ctx.data.current_data.pitch_spd;
 
     float yaw_error=loop_fp32_constrain
                     (_ctx.data.target_data.yaw_pos 
@@ -277,7 +276,7 @@ void sentry_gimbal_t::_IMU_gimbal_control()
     const float motor_yaw       = _ctx.data.current_data.yaw_pos;
     const float motor_pitch     = _ctx.data.current_data.pitch_pos;
 
-target_pitch1 = motor_pitch;
+
     // 底盘（大 yaw / 坡度）世界姿态 = 炮管世界姿态 − 小云台电机角
     // 注意：符号需按电机/IMU 安装方向实测标定，反号会导致斜坡上反向
     const float gimbal_yaw   = imu_world_yaw   - motor_yaw;
@@ -288,11 +287,12 @@ target_pitch1 = motor_pitch;
 
     if(desired_motor_pitch > _ctx.data.pitch_max_rad){
         desired_motor_pitch = _ctx.data.pitch_max_rad;
-        _ctx.data.imu_data.target_pitch_rad = _ctx.data.imu_data.current_pitch_rad;
+       // _ctx.data.imu_data.target_pitch_rad = _ctx.data.imu_data.current_pitch_rad;
+        _ctx.data.imu_data.target_pitch_rad= 5*(motor_pitch - desired_motor_pitch) + _ctx.data.imu_data.current_pitch_rad;
     }
     if(desired_motor_pitch < _ctx.data.pitch_min_rad){
          desired_motor_pitch = _ctx.data.pitch_min_rad;
-        _ctx.data.imu_data.target_pitch_rad = _ctx.data.imu_data.current_pitch_rad;
+         _ctx.data.imu_data.target_pitch_rad= 5*(motor_pitch - desired_motor_pitch) + _ctx.data.imu_data.current_pitch_rad;
     }
 
 
@@ -316,17 +316,21 @@ target_pitch1 = motor_pitch;
     // --- 偏航：期望电机角 = 世界目标 − 底盘朝向，夹小 yaw 限幅（大 yaw 360° 由底盘负责）---
     float residual_yaw = loop_fp32_constrain(target_world_yaw - gimbal_yaw, -PI, PI);
     float desired_motor_yaw = residual_yaw;
-    if(desired_motor_yaw > _ctx.data.yaw_max_rad) residual_yaw = _ctx.data.yaw_max_rad;
-    if(desired_motor_yaw < _ctx.data.yaw_min_rad) residual_yaw = _ctx.data.yaw_min_rad;
+    if(desired_motor_yaw > _ctx.data.yaw_max_rad)   desired_motor_yaw = _ctx.data.yaw_max_rad;
+    if(desired_motor_yaw < _ctx.data.yaw_min_rad)   desired_motor_yaw = _ctx.data.yaw_min_rad;
 
-    float yaw_error = desired_motor_yaw - motor_yaw;   // 限幅内 == target_world_yaw - imu_yaw
+    float yaw_error = loop_fp32_constrain(desired_motor_yaw - motor_yaw,-PI,PI);   // 限幅内 == target_world_yaw - imu_yaw
     float yaw_pos_out = _ctx.pid.yaw_pos_pid->calculate(yaw_error, 0);
     _ctx.data.out_data.yaw_torque = _ctx.pid.yaw_spd_pid->calculate(
         yaw_pos_out, _ctx.data.current_data.yaw_spd);
 
 
     //将限幅值返回目标值，防止某些情况 小yaw目标值一直处在限幅外，
-    _ctx.data.imu_data.target_yaw_rad = desired_motor_yaw + gimbal_yaw;
+    _ctx.data.imu_data.target_yaw_rad =loop_fp32_constrain(desired_motor_yaw + gimbal_yaw, -PI, PI);
+    yaw_imu= _ctx.data.imu_data.target_yaw_rad;
+    yaw_motor =desired_motor_yaw;
+    yaw_1=gimbal_yaw;
+   yaw_2=residual_yaw;
 }
 
 void sentry_gimbal_t::_send_motor_command() const{

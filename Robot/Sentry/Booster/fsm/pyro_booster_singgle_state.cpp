@@ -6,10 +6,12 @@ namespace pyro
 
 void sentry_booster_t::fsm_active_t::fsm_ready_t::singgle_shoot_t::enter(owner *owner)
 {
-    //owner->_ctx.target_data.trigger_equal_pos = owner->_ctx.current_data.trigger_equal_pos;
+    owner->_ctx.data.target_data.trigger_equal_pos 
+                    = floor(owner->_ctx.data.current_data.trigger_equal_pos/BOOSTER_ONE_SHOOT_ANGLE + 1)
+                                        *BOOSTER_ONE_SHOOT_ANGLE + owner->_ctx.data.init_trigger_pos;
     //owner->_ctx.current_fire_count = owner->_ctx.cmd->fire_count;
+    owner->_ctx.data.current_fire_count = owner->_ctx.cmd->fire_count;
 }
-
 void sentry_booster_t::fsm_active_t::fsm_ready_t::singgle_shoot_t::execute(owner *owner)
 {
     if(owner->_ctx.cmd->multi_shoot){

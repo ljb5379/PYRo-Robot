@@ -226,8 +226,20 @@ void chassis_rxcmd()//后续考虑要不要根据调试分成不同模式，比�
         else{
             
             rudder_cmd_ptr->nav_en = msg.nav_en();
+
+
             if (rudder_cmd_ptr->nav_en == true)
             {
+                if(nav_t::get_instance()->check_online() == false)
+                {
+                    rudder_cmd_ptr->nav_en = false;
+                    nav2mcu_msg.vx = 0;
+                    nav2mcu_msg.vy = 0;
+                    nav2mcu_msg.wz = 0;
+                    rudder_cmd_ptr->mode        = pyro::cmd_base_t::mode_t::PASSIVE;
+                    return;
+                }
+                nav2mcu_msg = nav_t::get_instance()->get_rx_msg();
                 // rudder_cmd_ptr->vx         = nav2mcu_msg.vx;
                 // rudder_cmd_ptr->vy         = nav2mcu_msg.vy;
                 // rudder_cmd_ptr->wz         = nav2mcu_msg.wz;
@@ -320,7 +332,7 @@ void chassis_dr162cmd()
 void sentry_chassis_thread(void *argument)
 {
     while (true)
-    {   nav2chassis_msg();
+    {   //nav2chassis_msg();
         imu2chassis();
         chassis_rxcmd();
         // 如果后续希望由底盘板直接解算 RC，可以取消下面这行的注释

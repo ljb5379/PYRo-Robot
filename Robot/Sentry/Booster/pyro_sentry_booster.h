@@ -59,6 +59,7 @@ struct sentry_booster_deps_t
         pid_t* trig_spd_pid;
         pid_t* l_fric_pid;
         pid_t* r_fric_pid;
+        pid_t* trig_init_pid;
     };
 
     motor_deps_t motor_deps{};
@@ -118,7 +119,9 @@ struct sentry_booster_deps_t
         bool singgle_shoot;
         uint8_t error_count{0};
         
+        bool _init_finish{0};
         
+        float init_trigger_pos{0};
         #if new_function3_enable
         bool init_finished_flag;  // 拨弹盘初始化完成标志。完成时置1
         bool is_trigger_ready{true};
@@ -199,19 +202,13 @@ class sentry_booster_t final
         void on_execute(owner *owner) override;
         void on_exit(owner *owner) override;
 
-        struct state_stay_t final : public state_t<owner>
+        struct state_init_t final : public state_t<owner>
         {
             void enter(owner *owner) override;
             void execute(owner *owner) override;
             void exit(owner *owner) override;
         };
 
-        struct state_wait_t final : public state_t<owner>
-        {
-            void enter(owner *owner) override;
-            void execute(owner *owner) override;
-            void exit(owner *owner) override;
-        };
 
         struct fsm_ready_t final : public fsm_t<owner>
         {
@@ -245,8 +242,7 @@ class sentry_booster_t final
             void execute(owner *owner) override;
             void exit(owner *owner) override;
         };
-        state_stay_t _state_stay;
-        state_wait_t _state_wait;
+        state_init_t _state_init;
         state_stall_t _state_stall;
         fsm_ready_t _state_ready;
         

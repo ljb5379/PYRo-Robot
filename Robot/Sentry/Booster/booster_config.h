@@ -17,11 +17,9 @@
 #define new_function1_enable  1    //新波胆盘展开逻辑
 #define new_function2_enable  1    //摩擦轮下力刹车
 
-#if new_function3_enable == 0
 
-#elif new_function3_enable == 1
     #define BOOSTER_TRIGGER_INIT_SPEED 2.0f    //一秒2发的转速
-    #define BOOSTER_TRIGGER_PLUG_SPEED 0.5f    //堵转速度 维持.5秒判定结束
+    #define BOOSTER_TRIGGER_PLUG_SPEED 0.3f    //堵转速度 维持.5秒判定结束
     #define BOOSTER_TRIGGER_INIT_COUNT 500     //500ms  
-#endif
+    #define BOOSTER_TRIGGER_PLUG_TOUQUE 0.6 
 #endif

@@ -12,24 +12,18 @@ void sentry_booster_t::fsm_active_t::on_enter(owner *owner)
     owner->_ctx.motor.fric_right->enable();
     owner->_ctx.motor.trigger->enable();
 
-    
-    change_state(&_state_stay);
+    owner->_ctx.data._init_finish = 0;
+    change_state(&_state_init);
 }
 
 void sentry_booster_t::fsm_active_t::on_execute(owner *owner)
 {
-    // if(owner->_ctx.cmd->fric_on){
-    //     if(_active_state == &_state_stay){
-    //         change_state(&_state_wait);
-    //     }
-
-    //     owner->_ctx.cmd->fric_target_speed = BOOSTER_SHOOT_FRIC_SPEED;
-        
-    // }
-    if(!owner->_ctx.cmd->fric_on){
-
-        change_state(&_state_stay);
+    if(owner->_ctx.data._init_finish == 0){
+        return;
     }
+
+    //change_state(&_state_ready);
+    
      // 3. 拨弹盘堵转判断
     // 通过拨盘电机的速度和扭矩判断是否堵转
     constexpr float STALL_TIME_THRESHOLD   = 400.0f; // 堵转时间阈值
@@ -68,8 +62,8 @@ void sentry_booster_t::fsm_active_t::on_execute(owner *owner)
     
     
     //owner->_solve();
-    owner->_fric_control();
-    owner->_send_fric_command();
+    // owner->_fric_control();
+    // owner->_send_fric_command();
     
 
 }

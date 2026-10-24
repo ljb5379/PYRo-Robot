@@ -98,7 +98,8 @@ void deps_init()
                                 new pyro::pid_t(250.0f     -1  , 1.0f, 0.00f, 0.00f, 250.0f);
         booster_deps_ptr->pid_deps.trig_spd_pid = 
                                 new pyro::pid_t(0.065f  , 0.05f, 0.0002f, 0.09f, 20.0f);
-
+        booster_deps_ptr->pid_deps.trig_init_pid =
+                                new pyro::pid_t(0.020f  , 0.005f, 0.0f,0.1f,15.0f);
     }
     
 
@@ -127,35 +128,16 @@ void booster_dr162cmd(uint32_t notify_value)
         
 
         if(notify_value & EVENT_BIT_FRIC_ON)
-        {   //booster_cmd_ptr->start_trigger_init = false; //初始化事件 标志位
-            #if new_function3_enable
-                booster_cmd_ptr->start_trigger_init     = true;//摩擦轮在init结束开
-            #else
-                booster_cmd_ptr->fric_on                = !booster_cmd_ptr->fric_on;
-                
-            #endif
-        }
-
-            #if new_function3_enable
-                if(sentry_booster_ptr->get_ctx().data.init_finished_flag == 1){  //在下层 发现上层读取后主动将
-                    booster_cmd_ptr->fric_on                =  true;
-                    booster_cmd_ptr->start_trigger_init     = false;
-                }
-            #else
-                
-            #endif
-        
-
-        
-        
-#if new_function3_enable
-    if(notify_value & EVENT_BIT_FRIC_OFF)
-        {   //booster_cmd_ptr->start_trigger_init = false; //初始化事件 标志位
+        {   
+            booster_cmd_ptr->fric_on                = true;
             
-                booster_cmd_ptr->fric_on     = false;//摩擦轮在init结束开
+        }        
+        if(notify_value & EVENT_BIT_FRIC_OFF)
+        {  
+            
+                booster_cmd_ptr->fric_on     = false;
             
         }   
-#endif     
 
         booster_cmd_ptr->multi_shoot        =  0;//默认单发
     if(booster_cmd_ptr->fric_on){
@@ -194,17 +176,17 @@ void booster_dr162cmd(uint32_t notify_value)
 }
 void booster_dr16andaim2cmd(uint32_t notify_value){
     
-    
-    if(aim_t::get_instance()->check_online() == false)
-    {
-        booster_cmd_ptr->fric_on = false;
-        booster_cmd_ptr->multi_shoot = false;
-        booster_cmd_ptr->mode = pyro::cmd_base_t::mode_t::PASSIVE;
+    static uint32_t multi_count = 0;
+    // if(aim_t::get_instance()->check_online() == false)
+    // {
+    //     booster_cmd_ptr->fric_on = false;
+    //     booster_cmd_ptr->multi_shoot = false;
+    //     booster_cmd_ptr->mode = pyro::cmd_base_t::mode_t::PASSIVE;
 
-        return;
-    }
+    //     return;
+    // }
 
-    aim2booster_msg = aim_t::get_instance()->get_rx_msg();
+    // aim2booster_msg = aim_t::get_instance()->get_rx_msg();
     
 
 //_______________dr16控制总开关
@@ -226,10 +208,73 @@ void booster_dr16andaim2cmd(uint32_t notify_value){
     booster_cmd_ptr->mode              = pyro::cmd_base_t::mode_t::ACTIVE;
 
     
+    if(vrc.switches.right.current_pos == pyro::sw_pos_t::MID){
+    
+        booster_cmd_ptr->mode              = pyro::cmd_base_t::mode_t::ACTIVE;
+        
+
+        if(notify_value & EVENT_BIT_FRIC_ON)
+        {   
+            booster_cmd_ptr->fric_on                = true;
+            
+        }        
+        if(notify_value & EVENT_BIT_FRIC_OFF)
+        {  
+            
+                booster_cmd_ptr->fric_on     = false;
+            
+        }   
+
+        booster_cmd_ptr->multi_shoot        =  0;//默认单发
+    if(booster_cmd_ptr->fric_on){
+        if(pyro::sw_pos_t::DOWN == vrc.switches.left.current_pos){
+            
+            
+            if(multi_count > 1000){
+            booster_cmd_ptr->multi_shoot          =  true;
+            }
+            else{
+                
+                multi_count ++;
+            }
+        }
+        if(notify_value & EVENT_BIT_FIRE)
+        {   
+            //booster_cmd_ptr->singgle_shoot          =  !booster_cmd_ptr->singgle_shoot;
+            booster_cmd_ptr->multi_shoot          =  false;
+            multi_count = 0;
+            
+        }
+        
+
+        if(notify_value & EVENT_BIT_SINGGLE_SHOOT)
+        {   
+            //booster_cmd_ptr->singgle_shoot          =  !booster_cmd_ptr->singgle_shoot;
+            
+            booster_cmd_ptr->fire_count ++;
+            booster_cmd_ptr->multi_shoot        =  0;
+        }
+    }
+
+
+    
+
+    }
 //____________________自瞄自主控制_______________________//
-    bool aim_open = false;
-    if(vrc.switches.right.current_pos == pyro::sw_pos_t::DOWN){aim_open = true;}
-    if(aim_open){
+    
+    if(vrc.switches.right.current_pos == pyro::sw_pos_t::DOWN){
+
+    if(aim_t::get_instance()->check_online() == false)
+    {
+        booster_cmd_ptr->fric_on = false;
+        booster_cmd_ptr->multi_shoot = false;
+        booster_cmd_ptr->mode = pyro::cmd_base_t::mode_t::PASSIVE;
+
+        return;
+    }
+
+    aim2booster_msg = aim_t::get_instance()->get_rx_msg();
+
     booster_cmd_ptr->fric_on = true;//aim2booster_msg.fire;
     
     booster_cmd_ptr->multi_shoot = false;//!aim2booster_msg.is_single_shot;
