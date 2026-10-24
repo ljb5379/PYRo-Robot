@@ -4,8 +4,7 @@
 #include "pyro_dwt_drv.h"
 
 
-float llspd = 0.0f;
-float lrspd =  0.0f;
+
 namespace pyro
 {
 
@@ -32,10 +31,7 @@ void sentry_booster_t::fsm_active_t::fsm_ready_t::on_exit(owner *owner)
 {
     
     owner->_ctx.data.target_data.trigger_spd = 0.0f;
-    owner->_ctx.data.target_data.trigger_equal_pos = 
-                (owner->_ctx.data.target_data.trigger_equal_pos/BOOSTER_ONE_SHOOT_ANGLE)
-            *   BOOSTER_ONE_SHOOT_ANGLE +owner->_ctx.data.init_trigger_pos;
-                
+
     owner->_ctx.data.current_fire_count = owner->_ctx.cmd->fire_count;
 }
 

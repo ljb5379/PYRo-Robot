@@ -3,23 +3,7 @@
 #include "booster_config.h"
 #include "pyro_algo_common.h"
 #include <arm_math.h>
-int lspd =0;
-int rspd =0;
 
-float pos1 =0.0f;
-float pos2 =0.0f;
-
-float spd1 =0.0f;
-float spd2 =0.0f;
-
-float pos4 =0.0f;
-float pos5 =0.0f;
-
-float pos_error =0.0f;
-
-bool ad = false;
-int8_t error_count1 = 0;
-int8_t count1 = 0;
 namespace pyro{
 
 
@@ -126,20 +110,10 @@ namespace pyro{
         last_position = _ctx.data.current_data.trigger_pos;
 
         //获取处理后角速度rad/s
-        _ctx.data.current_data.trigger_spd = _ctx.data.current_data.trigger_spd / BOOSTER_TRIGGER_RATE;  
+        _ctx.data.current_data.trigger_equal_spd = _ctx.data.current_data.trigger_spd / BOOSTER_TRIGGER_RATE;  
     #endif
     }
 
-// void sentry_booster_t::_solve(){
-
-
-//     _ctx.target_data.left_spd=_ctx.cmd->fric_target_speed;
-//     _ctx.target_data.right_spd=-_ctx.cmd->fric_target_speed;
-
-
-//     //_ctx.target_data.trigger_spd=_ctx.cmd->trig_target_spd;
-
-// }
 
 void sentry_booster_t::_fric_control(){
 #if new_function2_enable == 0
@@ -256,9 +230,6 @@ void sentry_booster_t::_fric_control(){
 void sentry_booster_t::_trigger_control(){
 
 
-
-
-
 if(_ctx.cmd->fric_on){
 
     if(_ctx.cmd->multi_shoot == true){
@@ -292,7 +263,7 @@ if(_ctx.cmd->fric_on){
                                     _ctx.data.current_data.trigger_spd);
                                 
         
-    }
+}
 
 void sentry_booster_t::_send_fric_command() const{ 
     _ctx.motor.fric_left->send_torque(_ctx.data.out_data.l_fric_torque);

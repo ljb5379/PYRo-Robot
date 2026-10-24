@@ -125,44 +125,22 @@ void booster_dr162cmd(uint32_t notify_value)
     else{
         booster_cmd_ptr->mode              = pyro::cmd_base_t::mode_t::ACTIVE;
         
-
+    //1.开关摩擦轮
         if(notify_value & EVENT_BIT_FRIC_ON)
-        {   //booster_cmd_ptr->start_trigger_init = false; //初始化事件 标志位
-            #if new_function3_enable
-                booster_cmd_ptr->start_trigger_init     = true;//摩擦轮在init结束开
-            #else
-                booster_cmd_ptr->fric_on                = !booster_cmd_ptr->fric_on;
-                
-            #endif
+        {   //左上拨左中
+            booster_cmd_ptr->fric_on                = true;
         }
-
-            #if new_function3_enable
-                if(sentry_booster_ptr->get_ctx().data.init_finished_flag == 1){  //在下层 发现上层读取后主动将
-                    booster_cmd_ptr->fric_on                =  true;
-                    booster_cmd_ptr->start_trigger_init     = false;
-                }
-            #else
-                
-            #endif
-        
-
-        
-        
-#if new_function3_enable
-    if(notify_value & EVENT_BIT_FRIC_OFF)
-        {   //booster_cmd_ptr->start_trigger_init = false; //初始化事件 标志位
-            
-                booster_cmd_ptr->fric_on     = false;//摩擦轮在init结束开
-            
+        if(notify_value & EVENT_BIT_FRIC_OFF)
+        {   //左中拨左上
+            booster_cmd_ptr->fric_on                = false;
         }   
-#endif     
-
-        booster_cmd_ptr->multi_shoot        =  0;//默认单发
+    //2.单发/多发
+        booster_cmd_ptr->multi_shoot        =  0;  //默认单发
     if(booster_cmd_ptr->fric_on){
         if(pyro::sw_pos_t::DOWN == vrc.switches.left.current_pos){
             
             
-            if(multi_count > 1000){
+            if(multi_count > 600){
             booster_cmd_ptr->multi_shoot          =  true;
             }
             else{
@@ -227,24 +205,31 @@ void booster_dr16andaim2cmd(uint32_t notify_value){
 
     
 //____________________自瞄自主控制_______________________//
-    bool aim_open = false;
-    if(vrc.switches.right.current_pos == pyro::sw_pos_t::DOWN){aim_open = true;}
-    if(aim_open){
-    booster_cmd_ptr->fric_on = true;//aim2booster_msg.fire;
-    
-    booster_cmd_ptr->multi_shoot = false;//!aim2booster_msg.is_single_shot;
+
+    if(vrc.switches.right.current_pos == pyro::sw_pos_t::DOWN){
+    //booster_cmd_ptr->fric_on = aim2booster_msg.fire; //自瞄锁到人了;
+    booster_cmd_ptr->fric_on = true;
+    //booster_cmd_ptr->multi_shoot = false;
+    booster_cmd_ptr->multi_shoot = !aim2booster_msg.is_single_shot;
 
     //booster_cmd_ptr->fire_count += aim2booster_msg.fire;
 
     if( !booster_cmd_ptr->multi_shoot ){
-        
+        #if _auto_shoot == 0
         if(notify_value & EVENT_BIT_SINGGLE_SHOOT)
         {   
-            //booster_cmd_ptr->singgle_shoot          =  !booster_cmd_ptr->singgle_shoot;
+            
             
             booster_cmd_ptr->fire_count ++;
-            booster_cmd_ptr->multi_shoot        =  0;
+            
         }
+        #elif auto_shoot == 1
+        if(aim2booster_msg.fire)
+        {   
+    
+            booster_cmd_ptr->fire_count ++;
+        }   
+        #endif
     }
     }
 
@@ -296,6 +281,7 @@ void booster_dr16andaim2cmd(uint32_t notify_value){
         xTaskCreate(sentry_booster_thread, "start_sentry_booster_thread", 256,
                     nullptr, configMAX_PRIORITIES - 1, &booster_task_handle);
             // --- DR16 拨杆绑定 ---
+        read_scope_lock lock(pyro::rc_drv_t::get_lock());
         auto &vrc = pyro::rc_drv_t::read();
         pyro::sw_broker::subscribe(&vrc.switches.left, pyro::sw_event_t::UP_TO_MID, booster_task_handle, EVENT_BIT_FRIC_ON);
         pyro::sw_broker::subscribe(&vrc.switches.left, pyro::sw_event_t::DOWN_TO_MID, booster_task_handle, EVENT_BIT_SINGGLE_SHOOT);

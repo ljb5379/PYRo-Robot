@@ -12,14 +12,12 @@ void sentry_booster_t::fsm_active_t::on_enter(owner *owner)
     owner->_ctx.motor.fric_right->enable();
     owner->_ctx.motor.trigger->enable();
 
-    owner->_ctx.data.fric_is_able ==true;
+    owner->_ctx.data.fric_is_able =true;
 
-    owner->_ctx.data.init_finished_flag == 0;
-    #if 0
+    owner->_ctx.data.init_finished_flag = 0;
+
     change_state(&state_init);
-    #elif 1
-    owner->_ctx.data.init_finished_flag =1;
-    #endif
+
     
 }
 
@@ -62,14 +60,11 @@ void sentry_booster_t::fsm_active_t::on_execute(owner *owner)
         
     }
     else {
-        owner->_state_active.reset();
-    }    
-    
-    //owner->_solve();
-    // owner->_fric_control();
-    // owner->_send_fric_command();
-    
-
+        if(!(_active_state == &state_init || _target_state ==&state_init)){
+            change_state(&state_init);
+            //owner->_state_active.reset();
+        }    
+    }
 }
 
 void sentry_booster_t::fsm_active_t::on_exit(owner *owner)
