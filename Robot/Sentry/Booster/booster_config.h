@@ -21,5 +21,5 @@
     #define BOOSTER_TRIGGER_INIT_SPEED 2.0f    //一秒2发的转速
     #define BOOSTER_TRIGGER_PLUG_SPEED 0.3f    //堵转速度 维持.5秒判定结束
     #define BOOSTER_TRIGGER_INIT_COUNT 500     //500ms  
-    #define BOOSTER_TRIGGER_PLUG_TOUQUE 0.6 
 #endif
+

@@ -48,8 +48,7 @@ static void chassis2gimbal_rx()
     {
         // 底盘失联：数据清零
         gimbal_cmd_ptr->shoot_speed = 0;
-        gimbal_cmd_ptr->data1 = 0;
-        gimbal_cmd_ptr->data2 = 0;
+
     }
 #endif
 }
@@ -81,8 +80,8 @@ void deps_init()
     gimbal_deps_ptr->yaw_max_rad       = 0.70f;
     gimbal_deps_ptr->yaw_min_rad       = -0.70f;
 
-    gimbal_deps_ptr->pid_deps.yaw_pos_pid = new pyro::pid_t(30.50f, 0.0f, 0.0f,0,25);
-    gimbal_deps_ptr->pid_deps.yaw_spd_pid = new pyro::pid_t(0.56f, 0.0f, 0.0f,0,10.0f);
+    gimbal_deps_ptr->pid_deps.yaw_pos_pid = new pyro::pid_t(20.50f, 0.0f, 0.0f,0,10);
+    gimbal_deps_ptr->pid_deps.yaw_spd_pid = new pyro::pid_t(0.13f, 0.0f, 0.0f,0,10.0f);
 
     gimbal_deps_ptr->pid_deps.pitch_pos_pid = new pyro::pid_t(30.0f, 0.1f, 0.0f,1.0f,45);
     gimbal_deps_ptr->pid_deps.pitch_spd_pid = new pyro::pid_t(2.0f, 0.2f, 0.00f,3.0f,12);
@@ -169,11 +168,8 @@ void gimbal_dr16andaim2cmd()                                //  自瞄 + 遥控�
     if(pyro::sw_pos_t::MID == vrc.switches.right.current_pos)
     {
         
-        gimbal_cmd_ptr->delta_pitch = -vrc.axes.ry * 0.004f;
-        gimbal_cmd_ptr->delta_yaw   = -1* (vrc.axes.rx * 0.006f);
-        gimbal_cmd_ptr->target_yaw = 0;
-        gimbal_cmd_ptr->target_pitch = 0;
-        gimbal_cmd_ptr->small_yaw_mode = s_yaw_enable;
+        gimbal_cmd_ptr->delta_pitch = vrc.axes.ry * 0.004f;
+        gimbal_cmd_ptr->delta_yaw   = 1* (-vrc.axes.rx * 0.006f);
         gimbal_cmd_ptr->auto_mode = false;
         return;
 
@@ -282,23 +278,7 @@ void gimbal_dr16andnav2chassis_cmd(uint32_t notify_value)   //   遥控 + 导航
 
     static uint16_t spinning_count = 0;
 
-    // if(pyro::sw_pos_t::DOWN == vrc.switches.right.current_pos){
-    //     if(spinning_count > 1000)
-    //     {
-    //         spinning = true;
-    //         follow_en = false; //依赖底盘写法  谨慎调整！！！ 目前默认开启跟随
-    //     }
-    //     else {spinning_count++;}
-    // }
 
-    // if(EVENT_BIT_SPINNING & notify_value)
-    // {
-    //     spinning = false;
-    //     spinning_count = 0;
-    //     //follow_en =  !follow_en;
-    //     follow_en = true;
-    //     nav_en = !nav_en;
-    // }
     if(pyro::sw_pos_t::DOWN == vrc.switches.right.current_pos){
         
             spinning = false;
@@ -397,8 +377,14 @@ void gimbal_dr162chassis_cmd(uint32_t notify_value)         // 手动// 右下�
 
     static uint16_t spinning_count = 0;
 
+    #if AUTO_AIM
+        if(pyro::sw_pos_t::DOWN == vrc.switches.right.current_pos){
+            spinning = false;
+            follow_en = true;
+            nav_en = false;
+        }
 
-
+    #else
     if(pyro::sw_pos_t::DOWN == vrc.switches.right.current_pos){
         //active = 0 ; //————————————————————————————————————————调试自瞄零时加的
         if(spinning_count > 1000)
@@ -451,7 +437,7 @@ void gimbal_mcu2aim_data(){
         mcu2aim_msg.shoot_delay      = 0;
         mcu2aim_msg.state            = 0;
         mcu2aim_msg.stop_record      = 0;
-        mcu2aim_msg.autoaim          = _ctx.cmd->auto_mode;
+        mcu2aim_msg.autoaim          = 1;
         mcu2aim_msg.enemy_color      = 0;       
         pyro::aim_t::get_instance()->send_cmd(mcu2aim_msg);
 

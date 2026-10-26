@@ -158,6 +158,11 @@ else{
     _ctx.data.imu_ctr_en = false;
     _ctx.data.target_data.yaw_pos = 0;
      _ctx.data.target_data.pitch_pos  += _ctx.cmd->delta_pitch * 0.5f;
+
+    if( _ctx.data.target_data.pitch_pos>_ctx.data.pitch_max_rad)
+        { _ctx.data.target_data.pitch_pos=_ctx.data.pitch_max_rad;}
+    if( _ctx.data.target_data.pitch_pos<_ctx.data.pitch_min_rad)
+        { _ctx.data.target_data.pitch_pos=_ctx.data.pitch_min_rad;}
 }
     }
 #else//不使能自瞄，用电机角度控制

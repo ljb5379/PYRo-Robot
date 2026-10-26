@@ -3,23 +3,7 @@
 #include "booster_config.h"
 #include "pyro_algo_common.h"
 #include <arm_math.h>
-int lspd =0;
-int rspd =0;
 
-float pos1 =0.0f;
-float pos2 =0.0f;
-
-float spd1 =0.0f;
-float spd2 =0.0f;
-
-float pos4 =0.0f;
-float pos5 =0.0f;
-
-float pos_error =0.0f;
-
-bool ad = false;
-int8_t error_count1 = 0;
-int8_t count1 = 0;
 namespace pyro{
 
 
@@ -60,64 +44,7 @@ namespace pyro{
         _ctx.data.current_data.trigger_pos=
                     _ctx.motor.trigger->get_current_position();
 
-    #if new_function1_enable == 0
-                
-        float error_angle =  _ctx.data.current_data.trigger_pos - last_position;
-        if(_ctx.data.current_data.trigger_spd > 1.0f && last_rotate > 1.0f){
-            
-            if (error_angle > 0.1f)
-            {
-                /* code */
-            }
-            else if (error_angle < -3.0f)
-            {
-                pos4 = _ctx.data.current_data.trigger_pos;
-                pos5 = last_position;
-                spd1 = _ctx.data.current_data.trigger_spd;
-                spd2 = last_rotate;
-                pos_error = error_angle ;
-
-               _ctx.data.current_data.trigger_count++; /* code */
-            }
-        }
-        else if(_ctx.data.current_data.trigger_spd < -1.0f && last_rotate < -1.0f){
-            
-            if (error_angle > 3.0f)
-            {
-               _ctx.data.current_data.trigger_count--;
-            }
-            else
-            {
-              
-            }
-        }
-        else if((_ctx.data.current_data.trigger_spd < 0 && last_rotate > 0)||(_ctx.data.current_data.trigger_spd > 0 && last_rotate < 0)){
-            if(fabsf(error_angle) >3.0f )
-            _ctx.data.error_count++;
-        }
-
-        if(_ctx.data.current_data.trigger_count > 36){
-            _ctx.data.current_data.trigger_count = 0;
-        }
-        if(_ctx.data.current_data.trigger_count < 0){
-            _ctx.data.current_data.trigger_count = 36;
-        }
-
-
-
-        _ctx.data.current_data.trigger_equal_pos=((_ctx.data.current_data.trigger_count*2*PI)+_ctx.data.current_data.trigger_pos)/36.0f;
-
-        _ctx.data.current_data.trigger_equal_pos = loop_fp32_constrain(_ctx.data.current_data.trigger_equal_pos,-PI, PI); 
-
-        last_rotate = _ctx.data.current_data.trigger_spd;
-        last_position = _ctx.data.current_data.trigger_pos;
-
-       pos1 = _ctx.data.current_data.trigger_equal_pos;
-       pos2 = _ctx.data.target_data.trigger_equal_pos;
-    count1 = _ctx.data.current_data.trigger_count;
-    error_count1 = _ctx.data.error_count;
-
-    #elif new_function1_enable == 1
+   
 
         //获取处理后角度 rad
         float _error_angle =  loop_fp32_constrain(_ctx.data.current_data.trigger_pos - last_position,-PI, PI);
@@ -127,76 +54,12 @@ namespace pyro{
 
         //获取处理后角速度rad/s
         _ctx.data.current_data.trigger_equal_spd = _ctx.data.current_data.trigger_spd / BOOSTER_TRIGGER_RATE;  
-    #endif
+
     }
 
-// void sentry_booster_t::_solve(){
-
-
-//     _ctx.target_data.left_spd=_ctx.cmd->fric_target_speed;
-//     _ctx.target_data.right_spd=-_ctx.cmd->fric_target_speed;
-
-
-//     //_ctx.target_data.trigger_spd=_ctx.cmd->trig_target_spd;
-
-// }
 
 void sentry_booster_t::_fric_control(){
-#if new_function2_enable == 0
 
-    if(_ctx.cmd->fric_on){
-        static bool first_time = true;
-        static float fric_spd = BOOSTER_SHOOT_FRIC_LINE_V;
-            
-        // _ctx.data.target_data.left_spd =       BOOSTER_SHOOT_FRIC_RADPS;//有裁判系统后速度换成计算值
-        // _ctx.data.target_data.right_spd =    - BOOSTER_SHOOT_FRIC_RADPS;
-        if(_ctx.cmd->shoot_speed>1e-5){
-            if(_ctx.cmd->shoot_speed>BOOSTER_SHOOT_MAX_SPEED){
-                // _ctx.data.target_data.left_spd -= BOOSTER_SHOOT_DELTA_V;
-                // _ctx.data.target_data.right_spd += BOOSTER_SHOOT_DELTA_V;
-                fric_spd -= BOOSTER_SHOOT_DELTA_V;
-            }
-            else if(_ctx.cmd->shoot_speed<BOOSTER_SHOOT_MIN_SPEED){
-                // _ctx.data.target_data.left_spd += BOOSTER_SHOOT_DELTA_V;
-                // _ctx.data.target_data.right_spd -= BOOSTER_SHOOT_DELTA_V;
-                fric_spd += BOOSTER_SHOOT_DELTA_V;
-            }
-            else{}
-
-            if(fric_spd>BOOSTER_SHOOT_FRIC_LINE_V*1.3f){
-                fric_spd = BOOSTER_SHOOT_FRIC_LINE_V*1.3f;
-            }
-            else if(fric_spd<BOOSTER_SHOOT_FRIC_LINE_V*0.7f){
-                fric_spd = BOOSTER_SHOOT_FRIC_LINE_V*0.7f;
-            }
-            else{}
-        }
-            _ctx.data.target_data.left_spd =       fric_spd/BOOSTER_FRIC_R;
-            _ctx.data.target_data.right_spd =    - fric_spd/BOOSTER_FRIC_R ;
-    }
-    else{
-        _ctx.data.target_data.left_spd   =       0.0f;//有裁判系统后速度换成计算值
-        _ctx.data.target_data.right_spd  =       0.0f;
-    }
-    // _ctx.target_data.left_spd=_ctx.cmd->fric_target_speed;
-    // _ctx.target_data.right_spd=-_ctx.cmd->fric_target_speed;
-    
-    
-    _ctx.data.out_data.l_fric_torque=_ctx.pid.l_fric_pid
-                        ->calculate(_ctx.data.target_data.left_spd,
-                                    _ctx.data.current_data.left_spd);
-    _ctx.data.out_data.r_fric_torque=_ctx.pid.r_fric_pid
-                        ->calculate(_ctx.data.target_data.right_spd,
-                                    _ctx.data.current_data.right_spd);
-
-
-    // if(!_ctx.cmd->fric_on){ 
-        
-    //     _ctx.out_data.l_fric_torque=0.0f;
-    //     _ctx.out_data.r_fric_torque=0.0f;
-
-    // }
-    #elif new_function2_enable == 1
     
     if(_ctx.cmd->fric_on){
     
@@ -249,7 +112,7 @@ void sentry_booster_t::_fric_control(){
     if(fabs(_ctx.data.target_data.right_spd)<1e-5 && fabs(_ctx.data.current_data.right_spd)<1e-5)
         _ctx.data.out_data.r_fric_torque=0.0f;                            
 
-    #endif
+
     
 }
 
@@ -292,7 +155,7 @@ if(_ctx.cmd->fric_on){
                                     _ctx.data.current_data.trigger_spd);
                                 
         
-    }
+}
 
 void sentry_booster_t::_send_fric_command() const{ 
     _ctx.motor.fric_left->send_torque(_ctx.data.out_data.l_fric_torque);
