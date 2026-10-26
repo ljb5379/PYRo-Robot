@@ -377,14 +377,8 @@ void gimbal_dr162chassis_cmd(uint32_t notify_value)         // 手动// 右下�
 
     static uint16_t spinning_count = 0;
 
-    #if AUTO_AIM
-        if(pyro::sw_pos_t::DOWN == vrc.switches.right.current_pos){
-            spinning = false;
-            follow_en = true;
-            nav_en = false;
-        }
+    
 
-    #else
     if(pyro::sw_pos_t::DOWN == vrc.switches.right.current_pos){
         //active = 0 ; //————————————————————————————————————————调试自瞄零时加的
         if(spinning_count > 1000)

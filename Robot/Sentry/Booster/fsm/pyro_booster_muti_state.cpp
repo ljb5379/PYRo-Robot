@@ -23,16 +23,7 @@ void sentry_booster_t::fsm_active_t::fsm_ready_t::multi_shoot_t::execute(owner *
 
         owner->_trigger_control();
         owner->_send_trig_command();
-    //owner->_ctx.motor.fric_left->send_torque(0);
-    //owner->_ctx.motor.fric_right->send_torque(0);
-    //owner->_ctx.motor.trigger->send_torque(0);
 
-    //owner->_ctx.cmd->fric_target_speed = 0.0f;
-    
-
-
-    
-    //owner->_ctx.motor.trigger
 }
 
 void sentry_booster_t::fsm_active_t::fsm_ready_t::multi_shoot_t::exit(owner *owner)
