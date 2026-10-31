@@ -118,7 +118,7 @@ void booster_dr162cmd(uint32_t notify_value)
         booster_cmd_ptr->fire_count   = 0;
         booster_cmd_ptr->real_hit_speed   = 0;
         booster_cmd_ptr->multi_shoot   =  0;
-        booster_cmd_ptr->start_trigger_init = 0;
+        
         
         return;
     }
@@ -199,6 +199,7 @@ void booster_dr16andaim2cmd(uint32_t notify_value){
 
     pyro::read_scope_lock lock(pyro::rc_drv_t::get_lock());
     auto &vrc = pyro::rc_drv_t::read();
+
     if (pyro::sw_pos_t::UP == vrc.switches.right.current_pos)
     {
         booster_cmd_ptr->mode              = pyro::cmd_base_t::mode_t::PASSIVE;
@@ -211,18 +212,17 @@ void booster_dr16andaim2cmd(uint32_t notify_value){
     if(vrc.switches.right.current_pos == pyro::sw_pos_t::MID){
     
         booster_cmd_ptr->mode              = pyro::cmd_base_t::mode_t::ACTIVE;
-        
 
         if(notify_value & EVENT_BIT_FRIC_ON)
         {   
             booster_cmd_ptr->fric_on                = true;
+
             
         }        
         if(notify_value & EVENT_BIT_FRIC_OFF)
         {  
-            
-                booster_cmd_ptr->fric_on     = false;
-            
+            booster_cmd_ptr->fric_on     = false;
+
         }   
 
         booster_cmd_ptr->multi_shoot        =  0;//默认单发
@@ -274,9 +274,29 @@ void booster_dr16andaim2cmd(uint32_t notify_value){
     }
 
     aim2booster_msg = aim_t::get_instance()->get_rx_msg();
+#if auto_aim_test_mode == 1
+    if(notify_value & EVENT_BIT_FRIC_ON){   
+        booster_cmd_ptr->fric_on     = true;
+    }        
+    if(notify_value & EVENT_BIT_FRIC_OFF){  
+        booster_cmd_ptr->fric_on     = false;
+    }   
+      booster_cmd_ptr->multi_shoot = false;//!aim2booster_msg.is_single_shot;
 
+
+    if( !booster_cmd_ptr->multi_shoot ){
+        
+        if(notify_value & EVENT_BIT_SINGGLE_SHOOT)
+        {   
+            //booster_cmd_ptr->singgle_shoot          =  !booster_cmd_ptr->singgle_shoot;
+            
+            booster_cmd_ptr->fire_count ++;
+            booster_cmd_ptr->multi_shoot        =  0;
+        }
+    }
+#else
     booster_cmd_ptr->fric_on = true;//aim2booster_msg.fire;
-    
+
     booster_cmd_ptr->multi_shoot = false;//!aim2booster_msg.is_single_shot;
 
     //booster_cmd_ptr->fire_count += aim2booster_msg.fire;
@@ -291,6 +311,7 @@ void booster_dr16andaim2cmd(uint32_t notify_value){
             booster_cmd_ptr->multi_shoot        =  0;
         }
     }
+#endif
     }
 
 }

@@ -14,12 +14,13 @@
 #define BOOSTER_TRIGGER_RATE 36
 #define BOOSTER_ONE_SHOOT_ANGLE PI/4
 
-#define new_function1_enable  1    //新波胆盘展开逻辑
-#define new_function2_enable  1    //摩擦轮下力刹车
+
 
 
     #define BOOSTER_TRIGGER_INIT_SPEED 2.0f    //一秒2发的转速
     #define BOOSTER_TRIGGER_PLUG_SPEED 0.3f    //堵转速度 维持.5秒判定结束
     #define BOOSTER_TRIGGER_INIT_COUNT 500     //500ms  
-#endif
 
+    #define auto_aim_test_mode 1 //自瞄测试模式，1时自瞄状态下手动发弹
+    #define auto_trigger_init 0 //自动弹道初始化,1时手动控制，左上往左中
+#endif

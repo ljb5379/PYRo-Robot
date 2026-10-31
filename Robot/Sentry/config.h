@@ -19,7 +19,5 @@
 
 #define s_yaw_enable 0 //小yaw是否能操控
 
-#define new_function3_enable 0
-
 #define rad 40
 #endif

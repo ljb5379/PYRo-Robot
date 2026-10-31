@@ -34,7 +34,7 @@ void sentry_booster_t::fsm_active_t::state_init_t::execute(owner *owner)
             }
         }
         else{
-            trigger_init_count==0;
+            trigger_init_count=0;
         }
 
 
@@ -53,12 +53,28 @@ void sentry_booster_t::fsm_active_t::state_init_t::execute(owner *owner)
                                     owner->_ctx.data.current_data.trigger_spd);
         }
         owner->_send_trig_command();
-        owner->_ctx.motor.fric_left->send_torque(0);
-        owner->_ctx.motor.fric_right->send_torque(0);
+
+
+        owner->_ctx.data.target_data.left_spd   =       0.0f;
+        owner->_ctx.data.target_data.right_spd  =       0.0f;
+
+    // _ctx.target_data.left_spd=_ctx.cmd->fric_target_speed;
+    // _ctx.target_data.right_spd=-_ctx.cmd->fric_target_speed;
+    
+    
+        owner->_ctx.data.out_data.l_fric_torque=owner->_ctx.pid.l_fric_pid
+                        ->calculate(owner->_ctx.data.target_data.left_spd,
+                                    owner->_ctx.data.current_data.left_spd);
+        owner->_ctx.data.out_data.r_fric_torque=owner->_ctx.pid.r_fric_pid
+                        ->calculate(owner->_ctx.data.target_data.right_spd,
+                                    owner->_ctx.data.current_data.right_spd);
+        owner->_send_fric_command();
+        
         if( owner->_ctx.data._init_finish == 1 && 
-            fabs(owner->_ctx.data.target_data.trigger_equal_pos - owner->_ctx.data.current_data.trigger_equal_pos)<0.01f ){
-                request_switch(&owner->_state_active._state_ready);
-            }
+            fabs(owner->_ctx.data.target_data.trigger_equal_pos - owner->_ctx.data.current_data.trigger_equal_pos)<0.1f ){
+            request_switch(&owner->_state_active._state_ready);
+            owner->_ctx.data.init_start_flag = 0;
+        }
         //不知道在不发单是要不要上力
         //owner->_ctx.motor.trigger->send_torque(0);
 

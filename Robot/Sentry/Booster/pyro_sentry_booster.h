@@ -121,12 +121,14 @@ struct sentry_booster_deps_t
         
         bool _init_finish{0};
         
+        bool first_init{1};
+        bool init_start_flag{0};
+
         float init_trigger_pos{0};
-        #if new_function3_enable
-        bool init_finished_flag;  // 拨弹盘初始化完成标志。完成时置1
-        bool is_trigger_ready{true};
-        float init_trigger_pos{0};
-        #endif
+
+
+        bool fric_ready{false};
+
         
     };
     struct sentry_booster_context_t

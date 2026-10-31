@@ -127,43 +127,47 @@ namespace pyro{
 void sentry_gimbal_t::_solve(){
 
     
-#if AUTOAIM_MODE//若使用自瞄，全用imu控制
-//先对模式进行判断 若自瞄模式则为给定数值，若手动控制则为增量，若给超出范围值则保持旧值
+#if AUTOAIM_MODE
 
-    _ctx.data.imu_ctr_en = true;
+//若在自瞄模式，判断自瞄是否正常，若正常则接收自瞄数据控制
+//若自瞄数据不正常，保留原始角度
+//若手动模式，
+    //若small_yaw_enable 1 小yaw动，  0 小yaw不动
+    
     if(_ctx.cmd->auto_mode == true&& fabs(_ctx.cmd->target_pitch)<50.0f && fabs(_ctx.cmd->target_yaw) <50.0f)
     {
        _ctx.data.imu_data.target_pitch_rad = _ctx.cmd->target_pitch;
        _ctx.data.imu_data.target_yaw_rad = _ctx.cmd->target_yaw;
-
+        _ctx.data.imu_ctr_en = true;
     }
-    else if(_ctx.cmd->auto_mode == true && fabs(_ctx.cmd->target_pitch)>50.0f || fabs(_ctx.cmd->target_yaw) >50.0f) {
-        _ctx.data.imu_data.target_pitch_rad = _ctx.data.imu_data.current_pitch_rad;
-        _ctx.data.imu_data.target_yaw_rad   = _ctx.data.imu_data.current_yaw_rad;
-            return;
+    else if(_ctx.cmd->auto_mode == true && (fabs(_ctx.cmd->target_pitch)>50.0f || fabs(_ctx.cmd->target_yaw) >50.0f)) {
+        //_ctx.data.imu_data.target_pitch_rad = _ctx.data.imu_data.current_pitch_rad;
+        //_ctx.data.imu_data.target_yaw_rad   = _ctx.data.imu_data.current_yaw_rad;
+        _ctx.data.imu_ctr_en = true;
+            
     }
     else {
-if(_ctx.cmd->small_yaw_mode==1){
+        if(_ctx.cmd->small_yaw_mode==1){
 
-        if(_ctx.cmd->delta_pitch<0.00005f && _ctx.cmd->delta_pitch>-0.00005f)
-            {_ctx.cmd->delta_pitch=0.0f;}
-        if(_ctx.cmd->delta_yaw<0.00005f && _ctx.cmd->delta_yaw>-0.00005f)
-            {_ctx.cmd->delta_yaw=0.0f;}
-        _ctx.data.imu_ctr_en = true;
-        _ctx.data.imu_data.target_pitch_rad -= _ctx.cmd->delta_pitch;
-        
-        _ctx.data.imu_data.target_yaw_rad   += _ctx.cmd->delta_yaw;
-}
-else{
-    _ctx.data.imu_ctr_en = false;
-    _ctx.data.target_data.yaw_pos = 0;
-     _ctx.data.target_data.pitch_pos  += _ctx.cmd->delta_pitch * 0.5f;
+                if(_ctx.cmd->delta_pitch<0.00005f && _ctx.cmd->delta_pitch>-0.00005f)
+                    {_ctx.cmd->delta_pitch=0.0f;}
+                if(_ctx.cmd->delta_yaw<0.00005f && _ctx.cmd->delta_yaw>-0.00005f)
+                    {_ctx.cmd->delta_yaw=0.0f;}
+                _ctx.data.imu_ctr_en = true;
+                _ctx.data.imu_data.target_pitch_rad -= _ctx.cmd->delta_pitch;
+                
+                _ctx.data.imu_data.target_yaw_rad   += _ctx.cmd->delta_yaw;
+        }
+        else{
+            _ctx.data.imu_ctr_en = false;
+            _ctx.data.target_data.yaw_pos = 0;
+            _ctx.data.target_data.pitch_pos  += _ctx.cmd->delta_pitch * 0.5f;
 
-    if( _ctx.data.target_data.pitch_pos>_ctx.data.pitch_max_rad)
-        { _ctx.data.target_data.pitch_pos=_ctx.data.pitch_max_rad;}
-    if( _ctx.data.target_data.pitch_pos<_ctx.data.pitch_min_rad)
-        { _ctx.data.target_data.pitch_pos=_ctx.data.pitch_min_rad;}
-}
+            if( _ctx.data.target_data.pitch_pos>_ctx.data.pitch_max_rad)
+                { _ctx.data.target_data.pitch_pos=_ctx.data.pitch_max_rad;}
+            if( _ctx.data.target_data.pitch_pos<_ctx.data.pitch_min_rad)
+                { _ctx.data.target_data.pitch_pos=_ctx.data.pitch_min_rad;}
+        }
     }
 #else//不使能自瞄，用电机角度控制
     #if IMUMODE==0
@@ -214,7 +218,7 @@ else{
 
 // --- 备用 IMU 控制：重力前馈常量（世界系，需按 IMU 安装标定）---
 static constexpr float AI_GRAVITY_NEUTRAL_WORLD_RAD = -0.40f;
-static constexpr float AI_GRAVITY_FEEDFORWARD_GAIN   = 0.84f;
+static constexpr float AI_GRAVITY_FEEDFORWARD_GAIN   = 0.74f;
 
 void sentry_gimbal_t::_gimbal_control(){
     

@@ -60,9 +60,15 @@ namespace pyro{
 
 void sentry_booster_t::_fric_control(){
 
-    
+    _ctx.data.fric_ready = false;
     if(_ctx.cmd->fric_on){
-    
+        #if auto_trigger_init==0
+            if(_ctx.data.first_init == true){
+                _ctx.data.init_start_flag = true;
+                _ctx.data.first_init = false;
+                return;
+            }
+            #endif
         static float fric_spd = BOOSTER_SHOOT_FRIC_LINE_V;
             
         // _ctx.data.target_data.left_spd =       BOOSTER_SHOOT_FRIC_RADPS;//有裁判系统后速度换成计算值
@@ -90,9 +96,15 @@ void sentry_booster_t::_fric_control(){
         }
             _ctx.data.target_data.left_spd =       fric_spd/BOOSTER_FRIC_R;
             _ctx.data.target_data.right_spd =    - fric_spd/BOOSTER_FRIC_R ;
+
+            if(        fabs(_ctx.data.target_data.left_spd-_ctx.data.current_data.left_spd)<1.0f
+                    && fabs(_ctx.data.target_data.right_spd-_ctx.data.current_data.right_spd)<1.0f){
+                _ctx.data.fric_ready = true;
+            }
+
     }
     else{
-        _ctx.data.target_data.left_spd   =       0.0f;//有裁判系统后速度换成计算值
+        _ctx.data.target_data.left_spd   =       0.0f;
         _ctx.data.target_data.right_spd  =       0.0f;
     }
     // _ctx.target_data.left_spd=_ctx.cmd->fric_target_speed;
@@ -113,7 +125,7 @@ void sentry_booster_t::_fric_control(){
         _ctx.data.out_data.r_fric_torque=0.0f;                            
 
 
-    
+
 }
 
 void sentry_booster_t::_trigger_control(){
@@ -122,7 +134,7 @@ void sentry_booster_t::_trigger_control(){
 
 
 
-if(_ctx.cmd->fric_on){
+if(_ctx.cmd->fric_on && _ctx.data.fric_ready==true){
 
     if(_ctx.cmd->multi_shoot == true){
         float distance =loop_fp32_constrain(_ctx.data.target_data.trigger_equal_pos - _ctx.data.current_data.trigger_equal_pos, -PI,PI) ;

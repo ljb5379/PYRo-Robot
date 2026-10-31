@@ -80,8 +80,8 @@ void deps_init()
     gimbal_deps_ptr->yaw_max_rad       = 0.70f;
     gimbal_deps_ptr->yaw_min_rad       = -0.70f;
 
-    gimbal_deps_ptr->pid_deps.yaw_pos_pid = new pyro::pid_t(20.50f, 0.0f, 0.0f,0,10);
-    gimbal_deps_ptr->pid_deps.yaw_spd_pid = new pyro::pid_t(0.13f, 0.0f, 0.0f,0,10.0f);
+    gimbal_deps_ptr->pid_deps.yaw_pos_pid = new pyro::pid_t(35.50f, 0.0f, 0.0f,0,20);
+    gimbal_deps_ptr->pid_deps.yaw_spd_pid = new pyro::pid_t(0.33f, 0.0f, 0.0f,0,10.0f);
 
     gimbal_deps_ptr->pid_deps.pitch_pos_pid = new pyro::pid_t(30.0f, 0.1f, 0.0f,1.0f,45);
     gimbal_deps_ptr->pid_deps.pitch_spd_pid = new pyro::pid_t(2.0f, 0.2f, 0.00f,3.0f,12);
@@ -137,7 +137,7 @@ void gimbal_dr162cmd()                                      //_______纯手动�
 
     gimbal_cmd_ptr->mode              = pyro::cmd_base_t::mode_t::ACTIVE;
     gimbal_cmd_ptr->delta_pitch = -vrc.axes.ry * 0.005f;
-    gimbal_cmd_ptr->delta_yaw   =1* (-vrc.axes.rx * 0.008f);
+    gimbal_cmd_ptr->delta_yaw   = -vrc.axes.rx * 0.008f;
     gimbal_cmd_ptr->auto_mode = false;
 
     
@@ -168,9 +168,11 @@ void gimbal_dr16andaim2cmd()                                //  自瞄 + 遥控�
     if(pyro::sw_pos_t::MID == vrc.switches.right.current_pos)
     {
         
-        gimbal_cmd_ptr->delta_pitch = vrc.axes.ry * 0.004f;
-        gimbal_cmd_ptr->delta_yaw   = 1* (-vrc.axes.rx * 0.006f);
+        gimbal_cmd_ptr->delta_pitch = -vrc.axes.ry * 0.004f;
+        gimbal_cmd_ptr->delta_yaw   = -vrc.axes.rx * 0.006f;
         gimbal_cmd_ptr->auto_mode = false;
+        gimbal_cmd_ptr->small_yaw_mode = 0;
+        
         return;
 
     }
@@ -186,7 +188,8 @@ void gimbal_dr16andaim2cmd()                                //  自瞄 + 遥控�
         gimbal_cmd_ptr->aim_mode = 0;
         gimbal_cmd_ptr->target_yaw = 100;
         gimbal_cmd_ptr->target_pitch = 100;
-        gimbal_cmd_ptr->auto_mode = false;
+
+        gimbal_cmd_ptr->auto_mode = true;
         return;
         }
 
@@ -195,7 +198,7 @@ void gimbal_dr16andaim2cmd()                                //  自瞄 + 遥控�
         gimbal_cmd_ptr->aim_mode = aim2gimbal_msg.aim_state;
         gimbal_cmd_ptr->target_yaw = aim2gimbal_msg.shoot_yaw;
         gimbal_cmd_ptr->target_pitch = aim2gimbal_msg.shoot_pitch;
-        gimbal_cmd_ptr->small_yaw_mode = 1;
+        
         gimbal_cmd_ptr->auto_mode = true;
 
     }

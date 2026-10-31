@@ -11,13 +11,22 @@ void sentry_booster_t::fsm_active_t::on_enter(owner *owner)
     
     owner->_ctx.motor.fric_right->enable();
     owner->_ctx.motor.trigger->enable();
-
+#if auto_trigger_init == 1
     owner->_ctx.data._init_finish = 0;
     change_state(&_state_init);
+#else 
+    change_state(&_state_ready);
+#endif
 }
 
 void sentry_booster_t::fsm_active_t::on_execute(owner *owner)
-{
+{   
+#if auto_trigger_init == 0
+    if(owner->_ctx.data.init_start_flag == 1){
+        change_state(&_state_init);
+    }
+#endif
+    
     if(owner->_ctx.data._init_finish == 0){
         return;
     }
